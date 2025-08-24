@@ -8,19 +8,12 @@ it, than to silently hide information.
 """
 import glob
 import json
-import sys
 from io import StringIO
 from pathlib import Path
-from typing import NoReturn, Iterable, Optional
-import re
+from typing import NoReturn, Iterable
 import argparse
-from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+from datetime import datetime
 import csv
-from dataclasses import dataclass
-from collections import Counter
-
 
 # TODO Split this file into UI code, and library code. We already have text_ui, and xml_reader which use this file.
 #       Should be able to pass in an output function (print, plot with matplotlib, generate html page, etc.
@@ -34,12 +27,13 @@ from collections import Counter
 # TODO Some data appears to be missing from my download (PSA).
 # TODO Check single ended string referenceRanges, like "<50". How well does that graph? I treat this as
 #       -sys.maxsize < X < 50
+# TODO Not sure if do_vitals belongs here, or in health_lib or needs to be refactored.
+# TODO Where does 'plot' belong? A third module, which s pluggable
 
-from health_lib import StatInfo, ValueQuantity, Observation, ReferenceRange, convert_units, get_value_quantity
-from health_lib import get_reference_range, filter_category, extract_all_values, yield_observation_files
+from health_lib import StatInfo, Observation
+from health_lib import  extract_all_values, yield_observation_files
 from health_lib import list_categories, list_vitals, list_prefixes
-
-
+from plot_health import plot
 
 
 def print_conditions(cd: Path, csv_format: bool, match: str) -> NoReturn:
@@ -223,52 +217,6 @@ def parse_args():
     flags = ["-a", "-c", "-d", "-l", "-m", "--medicines-all", "--categories", "-s", "-g", "--procedures"]
     return args, active, flags
 
-def plot(dates, values: list[float], values2: list[float], graph_subject, data_name_1, data_name_2) -> None:
-    label0 = data_name_1 if data_name_1 else ""
-    label1 = data_name_2 if data_name_2 else ""
-
-    dates = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in dates]
-
-    # Find the date range
-    min_date = min(dates)
-    max_date = max(dates)
-    num_intervals = 6
-
-    date_range = max_date - min_date
-    interval_length = date_range / num_intervals
-
-    # Determine and set the locator and formatter directly
-    if interval_length < timedelta(days=70):  # Less than ~10 weeks
-        locator = mdates.WeekdayLocator(interval=max(1, int(interval_length.days / 7)))
-        date_format = mdates.DateFormatter('%Y-%m-%d')
-    elif interval_length < timedelta(days=365):
-        locator = mdates.MonthLocator()
-        date_format = mdates.DateFormatter('%Y-%m')
-    else:
-        locator = mdates.YearLocator()
-        date_format = mdates.DateFormatter('%Y')
-
-    # Create the plot
-    plt.figure(figsize=(10, 6))
-    plt.plot(dates, values, marker='o', label=label0)
-    if values2 is not None:
-        plt.plot(dates, values2, marker='x', linestyle='--', label=label1)
-
-    plt.legend()
-    # Set the locator and formatter
-    plt.gca().xaxis.set_major_locator(locator)
-    plt.gca().xaxis.set_major_formatter(date_format)
-
-    plt.gcf().autofmt_xdate()  # Rotate dates for better spacing
-
-    plt.title(F'Plot of {graph_subject} vs Date')
-    plt.xlabel('Date')
-    plt.ylabel(graph_subject)
-    plt.grid(True)
-    plt.tight_layout()
-    plt.ylim(0, max(values))
-
-    plt.show()
 
 def do_vital(condition_path: Path, vital: str, after: str, print_data: bool, vplot: bool, csv_format: bool,
              *, category_name) -> NoReturn:

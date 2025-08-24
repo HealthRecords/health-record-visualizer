@@ -26,6 +26,7 @@ from typing import TextIO
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 
+import plot_health
 from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, print_vitals, list_vitals
 
 
@@ -44,9 +45,9 @@ def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min, graph_y_m
     axes.set_ylim([graph_y_min, max(graph_y_max, normal_max)])
     if len(data_x) == 1:
         # Single points are invisible, so make it more obvious.
-        axes.plot(data_x, data_y, 'o', markeredgecolor = 'r')
+        plot_health.plot(data_x, data_y, 'o', markeredgecolor ='r')
     else:
-        axes.plot(data_x, data_y,)
+        plot_health.plot(data_x, data_y, )
 
     # Calculate major ticks for x-axis
     years = mdates.YearLocator()

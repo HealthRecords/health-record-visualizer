@@ -2,12 +2,18 @@ from pathlib import Path
 import argparse
 
 from health_lib import yield_observation_files, \
-    list_categories, list_vitals, do_vital, list_prefixes, print_medicines, print_conditions, print_procedures
+    list_categories, list_vitals, list_prefixes
+
+# TODO: Should these be part of health.py, which is another interface to the data? Both are print interfaces.
+#       maybe there should be a health_lib_print.py with common print functions. And you should be able to
+#       access print_vitals and print_prefixes from here, I think.
+from health import do_vital, print_vitals, print_prefixes, print_conditions, print_procedures
 
 # TODO maybe add a back option to menus (which is what q does, then q can be quit)
-# add option to print min/max/ave.
-#  TODO I have 199 items on the laboratory category. Step 1 sort them alphabetically, to make them easier to find.
-#           maybe allow the user to sort by alpha, or by date
+# TODO add option to print min/max/ave of any dataset
+#  TODO I have 199 items on the laboratory category. Should I
+#       Sort them alphabetically, to make them easier to find.
+#       Sort them frequency of occurrence, or by date?
 # TODO I have 199 items. Maybe split into submenus. Maybe automatically (a-h, i-k, l-z).
 # TODO Finish interactive/menu user interface. Observations is just getting started. Should this be a separate main?
 # TODO Should I forget the interactive UI and make a django version?
