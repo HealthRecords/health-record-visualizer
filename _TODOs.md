@@ -8,6 +8,9 @@ When plotting, we should not always write to the same file, and we should tell t
 files are hard coded, should pass them in.both the above and the source file(s)
 
 Add a smoothing option to the charts, it's hard to read when it jumps around a lot. 
+on the blood pressure graph, we still have numeric labels on each point on diastolic. We alrady removed them from 
+systolic (and everything else)
+write all graphs to "output" folder. 
 
 #  Architecture
 1. Switch to apache echarts to get interactive charts.
