@@ -229,6 +229,9 @@ async def get_vital_data(
             ad = datetime.strptime(after, '%Y-%m-%d')
             ws = [w for w in ws if ad < datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ')]
         
+        # Sort observations by date (most recent first)
+        ws.sort(key=lambda x: x.date, reverse=True)
+        
         # Convert to response format
         data_points = []
         for observation in ws:
@@ -275,6 +278,9 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
                 series=[],
                 chart_config={}
             )
+        
+        # Sort observations by date (most recent first) for consistent display
+        ws.sort(key=lambda x: x.date, reverse=True)
         
         # Prepare chart data
         dates = [observation.date for observation in ws]
@@ -369,8 +375,8 @@ async def get_conditions() -> ConditionsResponse:
                     condition_text=condition['code']['text']
                 ))
         
-        # Sort by recorded date
-        conditions.sort(key=lambda x: x.recorded_date)
+        # Sort by recorded date (most recent first)
+        conditions.sort(key=lambda x: x.recorded_date, reverse=True)
         
         return ConditionsResponse(conditions=conditions, count=len(conditions))
     except Exception as e:
@@ -409,8 +415,8 @@ async def get_medications(include_inactive: bool = False) -> MedicationsResponse
                         medication_name=medication['medicationReference']['display']
                     ))
         
-        # Sort by authored date
-        medications.sort(key=lambda x: x.authored_date)
+        # Sort by authored date (most recent first)
+        medications.sort(key=lambda x: x.authored_date, reverse=True)
         
         return MedicationsResponse(
             medications=medications, 
@@ -450,8 +456,8 @@ async def get_procedures() -> ProceduresResponse:
                     procedure_text=procedure['code']['text']
                 ))
         
-        # Sort by performed date
-        procedures.sort(key=lambda x: x.performed_date)
+        # Sort by performed date (most recent first)
+        procedures.sort(key=lambda x: x.performed_date, reverse=True)
         
         return ProceduresResponse(procedures=procedures, count=len(procedures))
     except Exception as e:
@@ -489,8 +495,8 @@ async def get_allergies() -> ConditionsResponse:
                     condition_text=allergy['code']['text']
                 ))
         
-        # Sort by recorded date
-        allergies.sort(key=lambda x: x.recorded_date)
+        # Sort by recorded date (most recent first)
+        allergies.sort(key=lambda x: x.recorded_date, reverse=True)
         
         return ConditionsResponse(conditions=allergies, count=len(allergies))
     except Exception as e:
