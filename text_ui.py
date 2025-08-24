@@ -110,6 +110,8 @@ def menu_main(condition_path: Path, args) -> None:
 def go():
     args  = parse_args()
     base = Path("export/apple_health_export")
+    base = Path('/Users/tomhill/Downloads/AppleHealth/apple_health_export')
+
     condition_path = base / "clinical-records"
 
     menu_main(condition_path, args)
