@@ -1,7 +1,7 @@
 # TODOs
 Consolidating top-of-file TODOs I had been using, when this was one file. Now that it is several, this needs to done.
 
-
+With a single developer, a bug tracker is too heavyweight.
 
 #  Architecture
 1. Split this file into UI code, and library code. We already have text_ui, and xml_reader which use this file.
@@ -24,6 +24,9 @@ Consolidating top-of-file TODOs I had been using, when this was one file. Now th
 1. Not sure if do_vitals belongs ion health.py, or in health_lib.py. Probably needs to be refactored
 1Need to include data from xml_reader.py into sparklines
 
+# Tests
+Needs more tests.
+
 # Concepts
 1. How should I plot values (not ranges) that are expressed as "60" with a comparator of ">". 
    1. "CREATININE AND CALCULATED GLOMERULAR FILTRATION RATE"
@@ -35,5 +38,4 @@ Things that may not require action, at least on my end.
  1. I don't currently handle the difference between < and <= on reference ranges. Is there really a difference?
  1. Some data appears to be missing from my download (PSA). 
     1. There are two versions of the test in my original medical record, with the same name. 
-    2. I suspect they got incorrectly deduped along the way.  
-2. 
+    2. I suspect they got incorrectly deduped along the way.
