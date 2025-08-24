@@ -57,17 +57,32 @@ def plot_mat(dates, values: list[float], values2: list[float], graph_subject, da
     plt.show()
 
 def plot_pygal(dates, values: list[float], values2: Optional[list[float]], graph_subject,
-               data_name_1, data_name_2, get_bytes = False) -> None | bytes:
+               data_name_1, data_name_2, get_bytes=False) -> None | bytes:
     chart_max = max(values)
     if values2 is not None:
         chart_max2 = max(values2)
         chart_max = max(chart_max, chart_max2)
-    pygal_chart = pygal.Line(range=(0, chart_max), title=graph_subject)  # Then create a bar graph object
+    pygal_chart = pygal.Line(width=800, height=100, explicit_size=True, range=(0, chart_max), title=graph_subject)  # Then create a bar graph object
     pygal_chart.add(data_name_1, values)  # Add some values
     if values2 is not None:
         pygal_chart.add(data_name_2, values2)  # Add some values
 
-    pygal_chart.render_to_file('plot_with_pygal.svg')
+    if get_bytes:
+        return pygal_chart.render_data_uri()
+    else:
+        pygal_chart.render_to_file('plot_with_pygal.svg')
+
+def plot_d3(dates, values: list[float], values2: Optional[list[float]], graph_subject,
+               data_name_1, data_name_2, get_bytes=False) -> None | bytes:
+    chart_max = max(values)
+    if values2 is not None:
+        chart_max2 = max(values2)
+        chart_max = max(chart_max, chart_max2)
+    pygal_chart = pygal.Line(width=800, height=100, explicit_size=True, range=(0, chart_max), title=graph_subject)  # Then create a bar graph object
+    pygal_chart.add(data_name_1, values)  # Add some values
+    if values2 is not None:
+        pygal_chart.add(data_name_2, values2)  # Add some values
+
     if get_bytes:
         return pygal_chart.render_data_uri()
     else:

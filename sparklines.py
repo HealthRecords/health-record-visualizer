@@ -19,6 +19,7 @@ TODO: I need normal range for every test we want to plot (I guess it's not requi
 TODO: This file has a test name of "---": Observation-7881B1CD-55FD-42BD-8FFB-CE98D13C88CD.json, fix it.
 """
 import base64
+import sys
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -29,14 +30,20 @@ import matplotlib.dates as mdates
 
 from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, list_vitals
 from plot_health import plot_pygal
+import plot_health
 
 def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min,
               graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
-    use_matlib = False
-    if use_matlib:
-        return sparkline_mat(data_x_str, data_y, graph_y_min, graph_y_max, normal_min, normal_max, fig_size_x, fig_size_y)
-    else:
-        return sparkline_pygal(data_x_str, data_y, graph_y_min, graph_y_max, normal_min, normal_max, fig_size_x, fig_size_y)
+    plot_lib = "pygal"
+    plot_func_nane = F"""sparkline_{plot_lib}"""
+    this_module = sys.modules[__name__]
+    func = getattr(this_module, plot_func_nane)
+    assert func
+    assert callable(func)
+    # print(func)
+    return func(data_x_str, data_y, graph_y_min, graph_y_max, normal_min, normal_max, fig_size_x, fig_size_y)
+    # else:
+    #     return sparkline_pygal(data_x_str, data_y, graph_y_min, graph_y_max, normal_min, normal_max, fig_size_x, fig_size_y)
 
 
 def sparkline_mat(data_x_str: list[str], data_y: list[float], graph_y_min,
@@ -78,14 +85,11 @@ def sparkline_pygal(data_x_str: list[str], data_y: list[float], graph_y_min,
     #      We have found some tests that have a referenceRange
     #      for some values, and not for others. I think there is a way to shade between curves. Try that.
     data_x = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in data_x_str]
-    # data_x = [1,2,3]
-    # data_y = [1,4,9]
     chart_bytes = plot_pygal(data_x, data_y,None,
                        graph_subject=None, data_name_1=None,
                              data_name_2=None, get_bytes=True)
 
-    return F"""<img alt="health data chart" src="{chart_bytes}">"""
-    # return F'<img src="data:image/svg;base64,{chart_bytes}'
+    return F"""<img alt="health data chart" style="max-height: 3rem; max-width: 30em" src="{chart_bytes}">"""
 
 
 def sparklines(incoming: list[list[Observation]], debug=False) -> list[tuple[str, str, int]]:
@@ -211,10 +215,10 @@ if __name__ == "__main__":
     with open("sparklines.html", "w") as fff:
         html_page(fff, stats_to_graph)
 
-    l = list_vitals(yield_observation_files(condition_path), "Lab")
-    print(l)
+    vitals_list = list_vitals(yield_observation_files(condition_path), "Lab")
+    print(vitals_list)
 
-    stats = [StatInfo("Lab", x) for x in l]
+    stats = [StatInfo("Lab", x) for x in vitals_list]
     stats = sorted(stats, key=lambda x: (x.name, x.category_name))
 
     stats_to_graph = []
@@ -223,4 +227,4 @@ if __name__ == "__main__":
         stats_to_graph.append(ws)
 
     with open("sparklines_all.html", "w") as fff:
-        html_page(fff, stats_to_graph)
+        html_page(fff, stats_to_graph, title="Health Data Sparklines")
