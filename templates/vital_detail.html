@@ -381,44 +381,66 @@ function updateSummaryStats() {
         return;
     }
     
-    const values = filteredData.map(point => point.value);
-    const count = values.length;
-    const sum = values.reduce((a, b) => a + b, 0);
-    const avg = sum / count;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
+    // Group data by measurement name (e.g., "Systolic Blood Pressure", "Diastolic Blood Pressure")
+    const dataByName = {};
+    filteredData.forEach(point => {
+        if (!dataByName[point.name]) {
+            dataByName[point.name] = [];
+        }
+        dataByName[point.name].push(point);
+    });
     
-    // Get unit from first data point
-    const unit = filteredData[0]?.unit || '';
+    const dataNames = Object.keys(dataByName);
+    let statsHtml = '';
     
-    document.getElementById('summaryStats').innerHTML = `
-        <div class="row text-center">
-            <div class="col-6 col-md-3">
-                <div class="border-end">
-                    <h6 class="text-primary mb-1">${count}</h6>
-                    <small class="text-muted">Total</small>
+    // Create statistics for each data type
+    dataNames.forEach((name, index) => {
+        const points = dataByName[name];
+        const values = points.map(point => point.value);
+        const count = values.length;
+        const sum = values.reduce((a, b) => a + b, 0);
+        const avg = sum / count;
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const unit = points[0]?.unit || '';
+        
+        // Add margin between datasets for multi-dataset vitals
+        const marginClass = index > 0 ? 'mt-4' : '';
+        
+        statsHtml += `
+            <div class="${marginClass}">
+                <h6 class="text-primary mb-3">${name}</h6>
+                <div class="row text-center">
+                    <div class="col-6 col-md-3">
+                        <div class="border-end">
+                            <h6 class="text-primary mb-1">${count}</h6>
+                            <small class="text-muted">Total</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="border-end">
+                            <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
+                            <small class="text-muted">Average</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="border-end">
+                            <h6 class="text-danger mb-1">${min} ${unit}</h6>
+                            <small class="text-muted">Minimum</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div>
+                            <h6 class="text-warning mb-1">${max} ${unit}</h6>
+                            <small class="text-muted">Maximum</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="border-end">
-                    <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
-                    <small class="text-muted">Average</small>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="border-end">
-                    <h6 class="text-danger mb-1">${min} ${unit}</h6>
-                    <small class="text-muted">Minimum</small>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div>
-                    <h6 class="text-warning mb-1">${max} ${unit}</h6>
-                    <small class="text-muted">Maximum</small>
-                </div>
-            </div>
-        </div>
-    `;
+        `;
+    });
+    
+    document.getElementById('summaryStats').innerHTML = statsHtml;
 }
 
 function clearFilters() {

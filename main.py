@@ -86,6 +86,7 @@ def get_menu_url(prefix: str) -> str:
     }
     return url_map.get(prefix, f"/data/{prefix.lower()}")
 
+
 @app.get("/api/prefixes")
 async def get_prefixes() -> PrefixResponse:
     """Get available data file prefixes"""
@@ -142,12 +143,14 @@ async def observation_category_page(request: Request, category: str):
         
         vitals = list_vitals(yield_observation_files(clinical_path), display_category)
         
-        # Convert to list of dicts for template
+        # Convert to list of dicts for template  
+        # Use URL-safe encoding that preserves original vital names
+        import urllib.parse
         vital_items = [
             {
                 "name": vital, 
                 "count": count,
-                "url": f"/observations/{category}/{vital.lower().replace(' ', '-')}"
+                "url": f"/observations/{category}/{urllib.parse.quote(vital, safe='')}"
             }
             for vital, count in sorted(vitals.items(), key=lambda x: x[1], reverse=True)
         ]
@@ -184,8 +187,9 @@ async def get_category_vitals(category: str) -> VitalResponse:
 async def vital_detail_page(request: Request, category: str, vital: str):
     """Show detailed view of a specific vital with chart and data"""
     try:
+        import urllib.parse
         display_category = category.replace('-', ' ').title()
-        display_vital = vital.replace('-', ' ').title()
+        display_vital = urllib.parse.unquote(vital)
         
         return templates.TemplateResponse(
             "vital_detail.html",
@@ -214,9 +218,10 @@ async def get_vital_data(
 ) -> ObservationDataResponse:
     """Get data for a specific vital"""
     try:
+        import urllib.parse
         _, clinical_path = get_health_paths()
         display_category = category.replace('-', ' ').title()
-        display_vital = vital.replace('-', ' ').title()
+        display_vital = urllib.parse.unquote(vital)
         
         # Extract the data using existing health_lib functions
         ws = extract_all_values(
@@ -256,9 +261,10 @@ async def get_vital_data(
 async def get_chart_data(category: str, vital: str, after: Optional[str] = None) -> ChartDataResponse:
     """Get chart configuration data for ECharts"""
     try:
+        import urllib.parse
         _, clinical_path = get_health_paths()
         display_category = category.replace('-', ' ').title()
-        display_vital = vital.replace('-', ' ').title()
+        display_vital = urllib.parse.unquote(vital)
         
         # Extract the data
         ws = extract_all_values(
@@ -279,8 +285,8 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
                 chart_config={}
             )
         
-        # Sort observations by date (most recent first) for consistent display
-        ws.sort(key=lambda x: x.date, reverse=True)
+        # Sort observations by date (oldest first) for proper chart timeline
+        ws.sort(key=lambda x: x.date, reverse=False)
         
         # Prepare chart data
         dates = [observation.date for observation in ws]
