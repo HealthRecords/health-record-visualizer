@@ -26,7 +26,7 @@ from typing import TextIO
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 
-from health import extract_all_values, yield_observation_files, Observation, StatInfo, print_vitals, list_vitals
+from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, print_vitals, list_vitals
 
 
 def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min, graph_y_max, normal_min, normal_max):

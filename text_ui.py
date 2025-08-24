@@ -1,7 +1,7 @@
 from pathlib import Path
 import argparse
 
-from health import yield_observation_files, \
+from health_lib import yield_observation_files, \
     list_categories, list_vitals, do_vital, list_prefixes, print_medicines, print_conditions, print_procedures
 
 # TODO maybe add a back option to menus (which is what q does, then q can be quit)

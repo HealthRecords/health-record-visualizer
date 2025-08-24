@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 from unittest import TestCase
-from health import extract_value, list_vitals, list_prefixes, list_categories, get_value_quantity, get_reference_range, \
+from health_lib import extract_value, list_vitals, list_prefixes, list_categories, get_value_quantity, get_reference_range, \
     StatInfo, ValueQuantity, ReferenceRange
 
 

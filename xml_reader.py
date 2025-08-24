@@ -32,7 +32,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from collections import Counter
 from math import log10
-from health import Observation
+from health_lib import Observation
 
 
 def find(stack: list[str], target: list[str]) -> bool:
