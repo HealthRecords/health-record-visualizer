@@ -35,6 +35,8 @@ from typing import TextIO, Optional
 
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
+import config
+
 
 from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, list_vitals
 from plot_health import plot_pygal
@@ -387,7 +389,7 @@ if __name__ == "__main__":
                         help=
                         'Graphing back end. One of "mat", "pygal", or "d3" (TBD)', default="mat")
 
-    source_file="export/apple_health_export/export_cda.xml"
+    source_file= config.source_dir / "export_cda.xml"
 
     args = parser.parse_args()
     if (args.labs or args.vitals) and args.apple:
