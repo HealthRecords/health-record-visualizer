@@ -590,11 +590,19 @@ async def get_procedures() -> ProceduresResponse:
         for p in glob.glob(str(path)):
             with open(p) as f:
                 procedure = json.load(f)
+                
+                # Handle different date formats (performedDateTime vs performedPeriod)
+                performed_date = procedure.get('performedDateTime')
+                if not performed_date and 'performedPeriod' in procedure:
+                    performed_date = procedure['performedPeriod'].get('start', 'Unknown')
+                if not performed_date:
+                    performed_date = 'Unknown'
+                
                 procedures.append(ProcedureRecord(
                     resource_type=procedure['resourceType'],
-                    performed_date=procedure['performedDateTime'],
-                    status=procedure['status'],
-                    procedure_text=procedure['code']['text']
+                    performed_date=performed_date,
+                    status=procedure.get('status', 'Unknown'),
+                    procedure_text=procedure.get('code', {}).get('text', 'Unknown Procedure')
                 ))
         
         # Sort by performed date (most recent first)
