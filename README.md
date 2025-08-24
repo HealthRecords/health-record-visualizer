@@ -51,7 +51,21 @@ command line tool, as it examines the directories to see what files exist.
 
 
 # Running the Code
-This is currently a set of command-line applications. If you want a nice GUI, try one of the alternatives listed below.
+## Web UI (recommended)
+The directory is currently hard coded in config.py, change it to point to your data directory.
+
+To start the server:
+```
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+Then open this url in your browser:
+```
+http://localhost:8000
+```
+
+## Text UI
+If you want to use this from the command line, here are some examples. This project started as a command line tool,
+and we just added a web ui. The web UI is probably a better approach. 
 
 The directory is currently hard coded in config.py, change it to point to your data directory.
 

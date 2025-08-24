@@ -1,19 +1,26 @@
 # TODOs
+
+
+
 Consolidating top-of-file TODOs I had been using, when this was one file, now that it is several files.
 
 With a single developer, a bug tracker is too heavyweight.
 
 # Simple
-When plotting, we should not always write to the same file, and we should tell the user where we wrote the plot.
-files are hard coded, should pass them in.both the above and the source file(s)
-
-Add a smoothing option to the charts, it's hard to read when it jumps around a lot. 
-on the blood pressure graph, we still have numeric labels on each point on diastolic. We alrady removed them from 
+1. handle non-numeric response. I know the creatine one has this, and http://localhost:8000/observations/lab/AB%20screen%2C%20blood looks like it too. 
+2. Update references, etc, so others can install and run.
+3. When plotting, we should not always write to the same file, and we should tell the user where we wrote the plot.
+files are hard coded, should pass them in.both the above and the source file(s) - are there any places that do this left?
+4. Add a smoothing option to the charts, it's hard to read when it jumps around a lot.
+5. on the blood pressure graph, we still have numeric labels on each point on diastolic. We already removed them from 
 systolic (and everything else)
-write all graphs to "output" folder. 
+6. write all graphs to "output" folder. 
+7. get ready for pypi, move all .py files to a package.
+8. Fails to plot 
 
 #  Architecture
-1. Switch to apache echarts to get interactive charts.
+1. Switch to apache echarts to get interactive charts. 
+   2. Mostly done. Sparklines still use matplotlib.
 2. Split this file into UI code, and library code. We already have text_ui, and xml_reader which use this file.
        Should be able to pass in an output function (print, plot with matplotlib, generate html page, etc.)
    2. Basic split has been done. Still some things to be moved around for the full UI/data access split
@@ -44,6 +51,11 @@ Needs more tests.
 1. How should I plot values (not ranges) that are expressed as "60" with a comparator of ">". 
    1. "CREATININE AND CALCULATED GLOMERULAR FILTRATION RATE"
    2. It's not a point, which is what I expect. 
+   3. I can't even figure out how this is stored, right now, if I search for 
+   4. 
+   5. "rg -l "CALCULATED GLOMERULAR FILTRATION RATE"
+   6. I get lots of files, but the ones that i checked don't have the <60 that is displayed in the kaiser app.
+   7. There are TWO files that have >60 in them. the rg above finds 586 files.
 
 # Notes
 Things that may not require action, at least on my end.
