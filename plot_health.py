@@ -18,12 +18,16 @@ def plot_mat(dates, values: list[float], values2: list[float], graph_subject, da
     # Find the date range
     min_date = min(dates)
     max_date = max(dates)
+    # Special case: If the data is all on one day, may the range go from
+    if min_date.date() == max_date.date():
+        min_date=min_date.date()
+        max_date = max_date.date() + timedelta(days=1)
     num_intervals = 6
 
     date_range = max_date - min_date
     interval_length = date_range / num_intervals
 
-    # Determine and set the locator and formatter directly
+    # TODO Get rid of this
     if interval_length < timedelta(days=70):  # Less than ~10 weeks
         locator = mdates.WeekdayLocator(interval=max(1, int(interval_length.days / 7)))
         date_format = mdates.DateFormatter('%Y-%m-%d')
