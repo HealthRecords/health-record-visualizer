@@ -2,7 +2,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 import argparse
+from typing import Optional
 
+from config import sanitize_filename_manual
 from health_lib import yield_observation_files, \
     list_categories, list_vitals, list_prefixes
 
@@ -75,7 +77,7 @@ def menu_print_or_plot(data_dir: Path, args:list[str]) -> None:
         # print("Would you like to print or plot this?")
     return
 
-def menu_observation(data_dir: Path, args):
+def menu_observation(data_dir: Path, args, chart_file_base:Optional[str]=None) -> None:
     """
     Observations are anything measured. Test results, measurements of height or weight, etc.
 
@@ -83,6 +85,8 @@ def menu_observation(data_dir: Path, args):
     :param args:
     :return:
     """
+    if chart_file_base is None:
+        raise ValueError("Missing chart_file_name")
     list_cat, dict_cat, file_count = list_categories(data_dir, False, one_prefix=None)
     while (option := menu_show(list_cat))[0] != -1:
         option_number, category = option
@@ -90,8 +94,12 @@ def menu_observation(data_dir: Path, args):
         vital_list = [k for k in vitals.keys()]
         while (choices := menu_show(vital_list))[0] != -1:
             choice_number, choice_string = choices
+            chart_file_name = chart_file_base + sanitize_filename_manual(choice_string) + ".html"
+            vplot = True
             do_vital(data_dir, choice_string, after=args.after, print_data=True, vplot=True, csv_format=args.csv_format,
-                     category_name=category, chart_file_name="whyDoWeNeedThisPlot.html")
+                     category_name=category, chart_file_name=chart_file_name)
+            if vplot:
+                print("Plot written to ", chart_file_name)
         print("You want information about ", option[1])
         # print("Would you like to print or plot this?")
     return
@@ -115,7 +123,7 @@ def menu_main(condition_path: Path, args) -> None:
             case "quit":
                 return
             case "Observation":
-                menu_observation(condition_path, args)
+                menu_observation(condition_path, args, chart_file_base="output/Observation_")
             case "MedicationRequest":
                 include_inactive, v = menu_show(["Active Medicines", "All Medicines"])
                 include_inactive = bool(include_inactive)
