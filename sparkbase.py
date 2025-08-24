@@ -199,6 +199,9 @@ def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
     print("""</body></html>""", file=f)
 
 def sparks(stats: list[list[Observation]], title: str = None, head_scripts: list[str] = (), head_styles=()):
+    if not stats or not stats[0]:
+        print("No data found for to generate sparklines from")
+        return
 
     with open("output/sparkbase.html", "w") as fff:
         html_page(fff, stats, title, head_scripts, head_styles)
@@ -266,10 +269,15 @@ if __name__ == "__main__":
                         default="Vital Signs")
     parser.add_argument("-v", "--vitals", action=argparse.BooleanOptionalAction,
                         help='Shortcut for --cat "Vital Signs"')
+    parser.add_argument("--list", action=argparse.BooleanOptionalAction,
+                        help='List all categories available. Depends on setting of --source')
     parser.add_argument("-l", "--labs", action=argparse.BooleanOptionalAction,
                         help='Shortcut for --cat "Labs". This can take a while.')
 
     args = parser.parse_args()
+    if (args.labs or args.vitals) and args.apple:
+        print("--labs and --vitals are not valid with --apple")
+        sys.exit(1)
     if args.vitals:
         cat = "Vital Signs"
     elif args.labs:
@@ -277,18 +285,24 @@ if __name__ == "__main__":
     else:
         cat = args.cat
     if args.apple:
-        if False:
+        if args.list:
             rc = get_all_test_types()
             for x in rc:
                 print(x)
             sys.exit(0)
+            # Current List YMMV
+            # Height
+            # Body weight Measured
+            # Heart rate
+            # Oxygen saturation
+            # Respiratory rate
         else:  # plot
-            cat = "apple"
-            display_name = "Oxygen saturation"
+            display_name = args.cat
+            cat = "Apple"
             assert cat
             observations = get_test_results(display_name)
             stats_to_graph = [[ob for ob in observations]]
-            sparks(stats_to_graph, head_styles=[styles], title="Hello, Neighbor")
+            sparks(stats_to_graph, head_styles=[styles], title=cat + " : " + display_name)
             sys.exit(0)
 
     else:
