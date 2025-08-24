@@ -250,17 +250,7 @@ def do_vital(condition_path: Path, vital: str, after: str, *, print_data: bool, 
         assert chart_file_name
         plot(dates, values_1, values_2, vital, data_name_1, data_name_2, file_name=chart_file_name)
 
-import re
-import unicodedata
 
-def sanitize_filename_manual(filename, max_length=128):
-    normalized = unicodedata.normalize('NFKD', filename)
-    cleaned = re.sub(r'[^a-zA-Z0-9.\-_ ]', ' ', normalized)
-    sanitized = cleaned.replace(' ', '_')
-    sanitized = sanitized[:max_length]
-    if not sanitized:
-        sanitized = 'unnamed_file'
-    return sanitized
 
 
 def go():
@@ -301,6 +291,8 @@ def go():
 
         do_vital(condition_path, args.stat, args.after, print_data=args.print,
                  vplot=args.plot, csv_format=args.csv_format, category_name="Vital Signs", chart_file_name=chart_file_name)
+        if args.plot:
+            print("HTML Chart written to", chart_file_name)
 
     if args.list_vitals:
         print_vitals(observation_files=yield_observation_files(condition_path), category="Vital Signs")
@@ -315,6 +307,9 @@ def go():
             chart_file_name = sanitize_filename_manual(F"health_plot_{stat}.html")
             do_vital(condition_path, param[1], args.after, print_data=args.print, vplot=args.plot,
                      csv_format=args.csv_format, category_name=param[0], file_name=chart_file_name)
+            if args.plot:
+                print("HTML Chart written to", chart_file_name)
+
         else:
             print("Invalid format: use -g category:code     like '-g \"Vital Signs:Blood Pressure\"")
 
