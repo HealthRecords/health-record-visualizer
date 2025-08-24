@@ -35,145 +35,11 @@ from collections import Counter
 # TODO Check single ended string referenceRanges, like "<50". How well does that graph? I treat this as
 #       -sys.maxsize < X < 50
 
-from health_lib import StatInfo, ValueQuantity, Observation, ReferenceRange, convert_units
+from health_lib import StatInfo, ValueQuantity, Observation, ReferenceRange, convert_units, get_value_quantity
+from health_lib import get_reference_range, filter_category, extract_all_values, yield_observation_files
+from health_lib import list_categories, list_vitals, list_prefixes
 
-def get_value_quantity(val: dict, test_name) -> ValueQuantity:
-    v = val["value"]
-    if 'unit' not in val:
-        u = "NoUnit"  # Ratios actually have no unit.
-    else:
-        u = val["unit"]
-        v, u = convert_units(v, u)
-    vq = ValueQuantity(v, u, test_name)
-    return vq
 
-def get_reference_range(rl: list) -> ReferenceRange:
-    assert 1 == len(rl) # I've never seen a refernef
-    r = rl[0]
-    # if len(r) != 3
-    # assert 3 == len(r)
-    if "low" in r:
-        low = get_value_quantity(r["low"], "low")
-        high = get_value_quantity(r["high"], "high")
-    else:
-        low = None
-        high = None
-    text = r['text']
-    return ReferenceRange(low, high, text)
-
-def extract_value_helper(*, filename: str, condition: dict, stat_info) -> Optional[Observation]:
-    """
-
-    :param filename: Just for printing error messages
-    :param condition: Could be a condition, an observation, etc. The contents of the file we are parsing now.
-    :param stat_info: contains
-        category_name: Filtering to this category, like "lab" or "Vital Sign"
-        name:  The name of the stat / vital sign we are looking for
-    :return:
-    """
-    category_name, sign_name = stat_info.category_name, stat_info.name
-    category_info = condition['category']
-    assert isinstance(category_info, list)
-    for ci in category_info:
-        if ci['text'] != category_name:
-            continue
-        if condition['code']['text'] != sign_name:
-            continue
-        t = sign_name
-        d = condition['effectiveDateTime']
-        # It turns out that blood pressure, which has two values, like 144/100,
-        # has a slightly different format. First find "component", then each has
-        # its own "valueQuantity"
-        # TODO There is a get_value_quantity function that duplicates this with different errors. Combine!
-        if "valueQuantity" in condition:
-            v = condition["valueQuantity"]["value"]
-            if "unit" not in condition["valueQuantity"]:
-                print("Debug: no units in valueQuantity. ", filename)
-                u = "NoUnit."
-            else:
-                u = condition["valueQuantity"]["unit"]
-                v, u = convert_units(v, u)
-            vq = ValueQuantity(v, u, sign_name)
-            if "referenceRange" in condition:
-                rr = get_reference_range(condition["referenceRange"])
-            else:
-                rr = None
-            return Observation(t, d, [vq], rr, filename)
-
-        elif "component" in condition:
-            sub_values = []
-            for component in condition["component"]:
-                val = component["valueQuantity"]["value"]
-                unit = component["valueQuantity"]["unit"]
-                text = component["code"]["text"]
-                val, unit = convert_units(val, unit)
-                vq = ValueQuantity(val, unit, text)
-
-                sub_values.append(vq)
-                reference_range = None
-            return Observation(t, d, sub_values)
-        elif "valueString" in condition:
-            val = condition["valueString"]
-            print(F"We don't handle 'valueString' yet: value is '{val}'")
-            return None
-        else:
-            print(F"*** No value found in {filename} ***")
-    return None
-
-def extract_value(file: str, stat_info) -> Observation | None:
-    """
-    Processes one file and extracts the value of a vital sign or other test, from it.
-    :param file:
-    :param stat_info: contains the sign_name ("Spo2") and the category, like "Lab"
-    :return: Optional[Observation
-    """
-    with open(file) as f:
-        condition = json.load(f)
-    return extract_value_helper(filename=file, condition=condition, stat_info=stat_info)
-
-def yield_observation_files(dir_path: Path) -> Iterable[str]:
-    for p in dir_path.glob("Observation*.json"):
-        yield p
-
-def filter_category(observation_files: Iterable[str], category: str) -> Iterable[dict]:
-    """
-    Filters observations, only passing on those with a category['text'] = category
-    :param observation_files: Source for file names
-    :param category: The name of the category to keep, like 'Vital Signs'
-    :return:
-    """
-    for file in observation_files:
-        with open(file) as f:
-            observation = json.load(f)
-            category_info = observation['category']
-            assert isinstance(category_info, list)
-            for ci in category_info:
-                if ci['text'] == category:
-                    yield observation
-
-def extract_all_values(observation_files: Iterable[str], *, stat_info: StatInfo) -> list[Observation]:
-    """
-sign_name: str, *, category_name
-    :param observation_files: iterable of files to read. Only Obser
-    :param stat_info: contains
-        category_name: Filtering to this category, like "lab" or "Vital Sign"
-        name:  The name of the stat / vital sign we are looking for
-    :return: Instance of class Observation or None
-    """
-    values = []
-    for p in observation_files:
-        print(p)
-        value = extract_value(p, stat_info)
-        if value is not None:
-            values.append(value)
-    values = sorted(values, key=lambda x: x.date)
-    return values
-
-def print_csv(data: Iterable):
-    output = StringIO()
-    wr = csv.writer(output, quoting=csv.QUOTE_ALL)
-    wr.writerow(data)
-    print(output.getvalue(), end="")
 
 
 def print_conditions(cd: Path, csv_format: bool, match: str) -> NoReturn:
@@ -253,6 +119,13 @@ def print_value(w: Observation):
         print(F" {value.value:6.1f} {value.unit},", end="")
     print()
 
+
+def print_csv(data: Iterable):
+    output = StringIO()
+    wr = csv.writer(output, quoting=csv.QUOTE_ALL)
+    wr.writerow(data)
+    print(output.getvalue(), end="")
+
 def print_value_csv(w: Observation):
     fields = [w.name, w.date]
     values = w.data
@@ -270,29 +143,12 @@ def print_values(ws: list[Observation], csv_format: bool) -> NoReturn:
             print_value(w)
 
 
-def list_vitals(observation_files: Iterable[str], category: str) -> Counter:
-    vitals = Counter()
-    signs_found = filter_category(observation_files, category)
-    for observation in signs_found:
-        code_name = observation['code']['text']
-        vitals[code_name] += 1
-    return vitals
-
 def print_vitals(observation_files: Iterable[str], category: str) -> NoReturn:
     vitals = list_vitals(observation_files, category)
     print(F"Files that have a category of '{category}' were found in files. These codes were found in them.")
     v_sorted = sorted(vitals, key=lambda x: vitals[x], reverse=True)
     for v in v_sorted:
         print(F"{vitals[v]:6} {v}")
-
-def list_prefixes(dir_path: Path) -> Counter:
-    extensions = Counter()
-    for p in dir_path.glob("*.json"):
-        name = p.stem
-        parts = name.split("-")
-        prefix = parts[0]
-        extensions[prefix] += 1
-    return extensions
 
 
 def print_prefixes(dir_path: Path) -> NoReturn:
@@ -301,69 +157,6 @@ def print_prefixes(dir_path: Path) -> NoReturn:
     for ext, count in extensions.items():
         print(F"{count:6} {ext}")
 
-def list_categories(dir_path: Path, only_first, *, one_prefix) -> (list[tuple], Counter, int):
-    """
-    The schema of this data is not well-designed. I have seen category expressed FOUR ways so far.
-
-    "category":
-        "CAT_NAME"
-
-    "category": [
-        "CAT_NAME",
-        "CAT_NAME2"
-    ]
-
-    # Procedure-9EBC73F9-2883-416C-8C39-259B394A953D.json
-    "category" : {
-         "text" : "CAT_NAME",
-    }
-
-    # Observation-6A188217-E5D4-4A52-A762-7194900720FB.json
-    category: [
-        {
-            "text":"CAT_NAME"
-        }
-    ]
-
-    :param one_prefix: There are different kinds of documents, that start with "Observation" or "MedicationRequest"
-    :                  For example, set this to "Observation" to only see categories from Observation files,
-                       or set to None for all files.
-    :param dir_path: Path of the directory to scan.
-    :param only_first:  Only take the first category in a file. This is so we can see if there are any files without
-                        categories.
-    :return: c_sorted, counter, count
-    """
-    counter = Counter()
-    count = 0
-    wildcard = "*.json"
-    if one_prefix:
-        wildcard = one_prefix + wildcard
-
-    for p in dir_path.glob(wildcard):
-        with open(p) as f:
-            count += 1
-            observation_data = json.load(f)
-            cat_top = observation_data["category"]
-            if isinstance(cat_top, str):
-                counter[cat_top] += 0.1
-            elif isinstance(cat_top, dict):
-                assert 'text' in ci
-                assert isinstance(cat_top['text'], str)
-                counter[cat_top['text']] += 1
-            elif isinstance(cat_top, list):
-                for ci in cat_top:
-                    if isinstance(ci, str):
-                        counter[ci] += 1
-                    elif isinstance(ci, dict):
-                        assert 'text' in ci
-                        counter[ci['text']] += 1
-                    if only_first:
-                        break
-            else:
-                raise ValueError(F"File {p} has no category", p)
-
-    c_sorted = sorted(counter, key=lambda x: counter[x], reverse=True)
-    return c_sorted, counter, count
 
 def print_categories(dir_path: Path, only_first, *, one_prefix) -> NoReturn:
     """
