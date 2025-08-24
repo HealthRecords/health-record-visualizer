@@ -10,7 +10,7 @@ Need to figure out how to scale each sparkline separately
 could also maybe use pygal, which sounds cool. But let's use matplotlib for now.
 
 
-# TODO It might make sense to graph from noon to noon, instead of midnight to midnight, since I'm gathering
+TODO It might make sense to graph from noon to noon, instead of midnight to midnight, since I'm gathering
        stats for night times.
 TODO: When grouping a single test by day
         Need same x and y range for all tests.
@@ -18,7 +18,7 @@ TODO: When grouping a single test by day
         Need to match the date range across all sparklines, if I'm going to line them up.
         Y range does not need to match.
 TODO: This file has a test name of "---": Observation-7881B1CD-55FD-42BD-8FFB-CE98D13C88CD.json, fix it.
-TOOD:    <statusCode code="completed"/>
+TODO:    <statusCode code="completed"/>
    <effectiveTime>
     <low value="20000101000059-0800"/> this has a 24 year range. What does that mean? I bet it means I reset the
                                        date from zero, while it was recording.
@@ -37,13 +37,13 @@ from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 
 from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, list_vitals
-from plot_health import plot_pygal, plot_mat
+from plot_health import plot_pygal
 from xml_reader import get_test_results, get_all_test_types
 
 
 def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min,
-              graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
-    plot_lib = "mat"
+              graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2, graph=None):
+    plot_lib = graph  # "pygal"
     plot_func_nane = F"""sparkline_{plot_lib}"""
     this_module = sys.modules[__name__]
     func = getattr(this_module, plot_func_nane)
@@ -71,7 +71,7 @@ def sparkline_mat(data_x_str: list[str], data_y: list[float], graph_y_min,
     max_date = max(data_x)
     # Special case: If the data is all on one day, may the range go from
     if min_date.date() == max_date.date():
-        min_date=min_date.date()
+        min_date = min_date.date()
         max_date = max_date.date() + timedelta(days=1)
 
     fig, axes = plt.subplots(1, 1, figsize=(fig_size_x, fig_size_y))
@@ -114,6 +114,30 @@ def sparkline_pygal(data_x_str: list[str], data_y: list[float], graph_y_min,
     return F"""<img alt="health data chart"  height="100" width="1000" src="{chart_bytes}">"""
     # return F"""<img alt="health data chart" style="max-height: 3rem; max-width: 30em" src="{chart_bytes}">"""
 
+def sparkline_d3(data_x_str: list[str], data_y: list[float], graph_y_min,
+              graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
+    # Temp,  as we go.
+
+    data_x = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in data_x_str]
+
+    if __name__ == '__main__':
+        with open("d3_template.html") as f:
+            template = f.read()
+        out = []
+        for q in zip(data_x_str, data_y):
+            out.append({"year": q[0][:10], "value": q[1]})
+        data_str = str(out)
+        output = template.replace("{{ data }}", data_str)
+        with open("output/d3_example.html", "w") as f:
+            f.write(output)
+
+
+    chart_bytes = plot_pygal(data_x, data_y, None,
+                       graph_subject=None, data_name_1=None,
+                             data_name_2=None, get_bytes=True)
+
+    return F"""<img alt="health data chart"  height="100" width="1000" src="{chart_bytes}">"""
+
 def get_max(incoming: list[list[Observation]]):
     global_max_y: float = 0
     for obs in incoming:
@@ -122,7 +146,7 @@ def get_max(incoming: list[list[Observation]]):
                 global_max_y = max(global_max_y, data.value)  # TODO: this ignores units. In proactice, tests I have seen all use the same units.
     return global_max_y
 
-def sparklines(incoming: list[list[Observation]], *, days: bool, debug: bool) -> list[tuple[str, str, int, str]]:
+def sparklines(incoming: list[list[Observation]], *, days: bool, debug: bool, graph) -> list[tuple[str, str, int, str]]:
     """
     Generate a list of sparklines.
     :param incoming: a list of lists of Observations.
@@ -178,20 +202,21 @@ def sparklines(incoming: list[list[Observation]], *, days: bool, debug: bool) ->
         else:
             graph_y_max = max(data_y)  # Local max
         img_info = sparkline(data_x, data_y, graph_y_min, graph_y_max,
-                             normal_min, normal_max, 8, 1)
+                             normal_min, normal_max, 8, 1, graph=graph)
         outgoing.append((img_info, one_ob_list[0].name, len(one_ob_list), one_ob_list[0].date))
 
     return outgoing
 
 
 def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
-              head_scripts: list[str] = (), head_styles: list[str] = (), days=None, subtitle=None):
+              head_scripts: list[str] = (), head_styles: list[str] = (), days=None, subtitle=None, graph=None):
     """
     Generate HTML page for the sparklines
     :param f:
     :param incoming: Currently a list of images to include in the HTML page. Should to to being a generator. TODO
     :param title
     :param subtitle
+    :param graph - The backend graphing implementation to use
     :param head_styles CSS Styles to be included in the head. XYZ in  XYZ in
              <link rel="stylesheet" href="XYZ">
     :param head_scripts src of Scripts to be included in the head. XYZ in <script src="XYZ" defer></script>
@@ -202,6 +227,7 @@ def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
         <html lang="en">
             <head>
                 <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 """, file=f)
     if title is not None:
         print(F"<title>{title}</title>", file=f)
@@ -218,16 +244,16 @@ def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
     if subtitle is not None:
         print(F"<p>{subtitle}</p>", file=f)
 
-    sparks = sparklines(incoming, days=days, debug=False)
+    sparks = sparklines(incoming, days=days, debug=False, graph=graph)
     spark_len = len(sparks)
     print(
         F"""<div style="display: grid;grid-template-columns: 1fr 8fr; grid-template-rows: repeat({spark_len}, 5em);">"""
         , file=f)
     for imgtag, stat_name, count, spark_date in sparks:
         print("""<div class="grid-item">""", file=f)
-        print(F"""{stat_name}({count})""", file=f)
+        print(F"""{stat_name}<br>Samples: {count}""", file=f)
         if days is not None:
-            print(F""": {spark_date})""", file=f)
+            print(F""":<br>Date: {spark_date[:10]}""", file=f)
         print("</div>", file=f)
         print("""<div class="grid-item">""", file=f)
         print(imgtag, file=f)
@@ -238,15 +264,16 @@ def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
 def sparks(stats: list[list[Observation]],
            title: str = None,
            head_scripts: list[str] = (),
-           head_styles=(),
-           days=None, output_file=None):
+           head_styles=(),*,
+           days=None, output_file=None, graph):
 
     if not stats or not stats[0]:
         print("No data found for to generate sparklines from")
         return
 
     with open(output_file, "w") as fff:
-        html_page(fff, stats, title, head_scripts, head_styles, days=days, subtitle="Generated " + str(datetime.now()))
+        html_page(fff, stats, title, head_scripts, head_styles, days=days,
+                  subtitle="Generated " + str(datetime.now()), graph=graph)
 
 styles: str = """.grid-container {
       display: grid;
@@ -268,12 +295,12 @@ styles: str = """.grid-container {
     }"""
 
 def group_by_days(stats_in: list[list[Observation]], source_device_name=None) -> list[list[Observation]]| None:
-    if len(stats_in) == 0:
-        return None
     assert len(stats_in) == 1
     flat = []
     for stat in stats_in:
         flat.extend(stat)
+    if not flat:
+        return None
     # TODO This doesn't really belong here, but it's an easy place to filter, since we have flat
     if source_device_name is not None:
         flat2 = []
@@ -296,7 +323,8 @@ def group_by_days(stats_in: list[list[Observation]], source_device_name=None) ->
     return stats_out
 
 
-def vitals(stats: list[StatInfo], graph_title="Graph", after: Optional[str]=None, output_file:str="output/sparkbase.html") -> None:
+def vitals(stats: list[StatInfo], graph_title="Graph", after: Optional[str] = None,
+           output_file:str="output/sparkbase.html", *, graph) -> None:
     """
     print a graph of the requests stats to a currently hardcoded file.
     :param stats: The stats to chart.
@@ -326,7 +354,7 @@ def vitals(stats: list[StatInfo], graph_title="Graph", after: Optional[str]=None
             ws = [w for w in ws if ad < datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ')]
         if ws:
             stats_to_graph.append(ws)
-    sparks(stats_to_graph, head_styles=[styles], title=graph_title, output_file=output_file)
+    sparks(stats_to_graph, head_styles=[styles], title=graph_title, output_file=output_file, graph=graph)
 
 if __name__ == "__main__":
     base: Path = Path("export/apple_health_export")
@@ -355,6 +383,11 @@ if __name__ == "__main__":
     parser.add_argument('--device',  action='store',
                         help=
                         'Source Device, with --apple ')
+    parser.add_argument('--graph',  action='store',
+                        help=
+                        'Graphing back end. One of "mat", "pygal", or "d3" (TBD)', default="mat")
+
+    source_file="export/apple_health_export/export_cda.xml"
 
     args = parser.parse_args()
     if (args.labs or args.vitals) and args.apple:
@@ -366,6 +399,8 @@ if __name__ == "__main__":
         cat = "Lab"
     else:
         cat = args.cat
+
+    assert args.graph in ["mat", "pygal", "d3"]
     if args.apple:
         if args.list:
             rc = get_all_test_types()
@@ -382,15 +417,18 @@ if __name__ == "__main__":
             display_name = args.cat
             # cat = "Apple"
             assert cat
-            observations = get_test_results(display_name)
+            observations = get_test_results(display_name, file_name=source_file)
             stats_to_graph = [[ob for ob in observations]]
             title = display_name
             if args.days:
                 source_device = args.device
                 title += " recorded by " + source_device
                 stats_to_graph = group_by_days(stats_to_graph, source_device)
+                if stats_to_graph is None:
+                    print("No stats found matching", args.cat, args.device)
+                    sys.exit(9)
             sparks(stats_to_graph, head_styles=[styles], title=title,
-                   days=args.days, output_file=args.file)
+                   days=args.days, output_file=args.file, graph=args.graph)
             sys.exit(0)
 
     else:
@@ -409,5 +447,5 @@ if __name__ == "__main__":
             sys.exit(0)
         else:
             vsi: list[StatInfo] = [StatInfo(cat, name) for name in vs]
-            vitals(vsi, graph_title=cat, after=args.after, output_file=args.file)
+            vitals(vsi, graph_title=cat, after=args.after, output_file=args.file, graph=args.graph)
 
