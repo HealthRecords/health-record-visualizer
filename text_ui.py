@@ -7,7 +7,8 @@ from health_lib import yield_observation_files, \
 # TODO: Should these be part of health.py, which is another interface to the data? Both are print interfaces.
 #       maybe there should be a health_lib_print.py with common print functions. And you should be able to
 #       access print_vitals and print_prefixes from here, I think.
-from health import do_vital, print_vitals, print_prefixes, print_conditions, print_procedures
+from health import do_vital, print_vitals, print_prefixes, print_conditions, print_procedures, print_medicines
+
 
 # TODO maybe add a back option to menus (which is what q does, then q can be quit)
 # TODO add option to print min/max/ave of any dataset
@@ -20,7 +21,6 @@ from health import do_vital, print_vitals, print_prefixes, print_conditions, pri
 # TODO For interactive mode, I need to be consistent about print, plot, and active/inactive.
 # TODO like medicines, conditions should have an option to print inactive.
 # TODO Do we want to have an option to process multiple or all stats in one run?
-# TODO Should be able to graph anything with a value quantity and a date.
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Explore Kaiser Health Data - Text Menu',
