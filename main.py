@@ -433,8 +433,26 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None,
             "series": series
         }
         
-        # Add reference range bands if available
+        # Add reference range bands and adjust y-axis if available
         if reference_range:
+            # Calculate data range
+            all_values = []
+            for s in series:
+                all_values.extend([point[1] for point in s["data"]])
+            
+            if all_values:
+                data_min = min(all_values)
+                data_max = max(all_values)
+                ref_min = reference_range["low"]
+                ref_max = reference_range["high"]
+                
+                # Extend y-axis to include both data and reference range with some padding
+                y_min = min(data_min, ref_min)
+                y_max = max(data_max, ref_max)
+                padding = (y_max - y_min) * 0.1  # 10% padding
+                
+                chart_config["yAxis"]["min"] = max(0, y_min - padding)  # Don't go below 0 for health data
+                chart_config["yAxis"]["max"] = y_max + padding
             # Add reference range as a background area for each series
             for i, s in enumerate(series):
                 series[i]["markArea"] = {
