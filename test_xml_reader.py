@@ -54,10 +54,9 @@ class Test(TestCase):
         display_names, element_stack = find_display_names(
             "test_data/test_find_display_names.xml",
             [Pattern(["component", "observation", "text", "sourceName"], None)])
-        self.assertEqual(2, len(display_names))
+        self.assertEqual(1, len(display_names))
         self.assertEqual(0, len(element_stack))
-        self.assertEqual(2, display_names["EMAY Oximeter:Heart rate"])
-        self.assertEqual(1, display_names["EMAY Oximeter:Alt Heart rate"])
+        self.assertEqual(3, display_names["EMAY Oximeter"])
 
     def test_find_display_names2(self):
         display_names, element_stack = find_display_names(
