@@ -100,7 +100,7 @@ def get_test_results():
             element_stack.append(tag)
             # print(element, element.attrib, element.text)
             if find(element_stack, ["component", "observation", "code"]):
-                ob = Observation(element.attrib['displayName'])
+                ob = Observation(name=element.attrib['displayName'])
             elif find(element_stack, ["text", "value"]):
                 ob.value = element.text
             elif tag == "unit":
