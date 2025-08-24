@@ -36,7 +36,16 @@ from math import log10
 from typing import Optional, Generator
 
 from health_lib import Observation, ValueQuantity
+from enum import Enum
+class FetchType(Enum):
+    ATTR = 0
+    CONTENT = 1
 
+@dataclass
+class Pattern:
+    path: list[str]
+    type: FetchType
+    attr: str | None  # Only used if fetch type is attr.
 
 def find(stack: list[str], target: list[str]) -> bool:
     """
@@ -52,7 +61,7 @@ def find(stack: list[str], target: list[str]) -> bool:
             return False
     return True
 
-def trim(tag:str) -> str:
+def trim(tag: str) -> str:
     """
     All the tags are namespaced in the same namespace, so it doesn't matter. Trim it off for simplicity.
     :param tag:
@@ -62,7 +71,7 @@ def trim(tag:str) -> str:
         return tag
     return tag[tag.find("}")+1:]
 
-def clean_tag(tag:str) -> str:
+def clean_tag(tag: str) -> str:
     tag = unicodedata.normalize("NFKD", trim(tag))
     return tag
 
@@ -71,16 +80,53 @@ def gen(file_name: str, events):
         event, element = i
         yield index, event, element
 
-def find_display_names(file_name: str, pattern: list[str]):
+def find_parent_tag(patterns: list[Pattern]):
+    """
+    If we are finding a set of information from various tags, the information won't be complete until we have all
+    of them. How do we know that we have all the information? When the common parent tab closes. This method
+    finds the closest parent tag
+
+    The patterns must start at the same level.
+    :param patterns: The list of patterns
+    :return: Pattern
+    """
+    assert patterns
+    paths = [p.path for p in patterns]
+    assert paths
+    pp = paths[0]
+    for path in paths[1:]:
+        if len(pp) > len(path):
+            pp = pp[:len(path)]
+        for index in range(len(pp)):
+            if path[index] != pp[index]:
+                pp = pp[:index]
+    assert pp
+    return Pattern(pp, FetchType.CONTENT, None)
+
+
+def find_display_names(file_name: str, patterns: list[Pattern]):
+    parent_tag: Pattern = find_parent_tag(patterns)
     element_stack = []
     display_names = Counter()
+    names =[]
     for index, event, element in gen(file_name, ["start", "end"]):
         tag = clean_tag(element.tag)
         if event == "start":
             element_stack.append(tag)
-            if find(element_stack, target=pattern):
-                display_names[element.attrib['displayName']] += 1
         elif event == "end":
+            for pattern in patterns:
+                if find(element_stack, target=pattern.path):
+                    if pattern.type == FetchType.ATTR:
+                        dn = element.attrib[pattern.attr]
+                        names.insert(0, dn)
+                    elif pattern.type == FetchType.CONTENT:
+                        dn = element.text
+                        names.insert(0, dn)
+            if find(element_stack, target=parent_tag.path):
+                qualified_name = ":".join(names)
+                display_names[qualified_name] += 1
+                names = []
+
             element_stack.pop()
     return display_names, element_stack  # Only returning element_stack for test.
 
@@ -168,10 +214,12 @@ def print_test_results():
     #         print(tag)
 
 
+
 def get_all_test_types() -> Counter[str]:
     print("This may take a few minutes...")
     names, _ = find_display_names("export/apple_health_export/export_cda.xml", ["component", "observation", "code"])
     return names
+
 def print_all_test_types():
     names = get_all_test_types()
     max_count_name = max(names, key=names.get)

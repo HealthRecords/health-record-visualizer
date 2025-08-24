@@ -10,18 +10,27 @@
                 <observation classCode="OBS" moodCode="EVN">
                     <code code="8867-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"
                           displayName="Heart rate"/>
+                    <text>
+                        <sourceName>EMAY Oximeter</sourceName>
+                    </text>
                 </observation>
             </component>
             <component>
                 <observation classCode="OBS" moodCode="EVN">
                     <code code="8867-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"
                           displayName="Heart rate"/>
+                    <text>
+                        <sourceName>EMAY Oximeter</sourceName>
+                    </text>
                 </observation>
             </component>
             <component>
                 <observation classCode="OBS" moodCode="EVN">
                     <code code="8867-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"
                           displayName="Alt heart rate"/>
+                    <text>
+                        <sourceName>EMAY Oximeter</sourceName>
+                    </text>
                 </observation>
             </component>
 
