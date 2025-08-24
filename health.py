@@ -15,7 +15,7 @@ import argparse
 from datetime import datetime
 import csv
 
-
+import config
 from health_lib import StatInfo, Observation
 from health_lib import extract_all_values, yield_observation_files
 from health_lib import list_categories, list_vitals, list_prefixes
@@ -207,7 +207,7 @@ def parse_args():
 
 
 def do_vital(condition_path: Path, vital: str, after: str, *, print_data: bool, vplot: bool, csv_format: bool,
-            category_name, file_name) -> NoReturn:
+            category_name, chart_file_name=None) -> NoReturn:
     if not print_data and not vplot:
         print("You need to select at least one of --plot or --print with --stat")
         return
@@ -247,8 +247,8 @@ def do_vital(condition_path: Path, vital: str, after: str, *, print_data: bool, 
             data_name_2 = None
         else:
             raise ValueError(f"Unexpected number of data values. {len(first.data)}.")
-
-        plot(dates, values_1, values_2, vital, data_name_1, data_name_2, file_name=file_name)
+        assert chart_file_name
+        plot(dates, values_1, values_2, vital, data_name_1, data_name_2, file_name=chart_file_name)
 
 import re
 import unicodedata
@@ -266,7 +266,10 @@ def sanitize_filename_manual(filename, max_length=128):
 def go():
     args, active, flags = parse_args()
     base = Path("export/apple_health_export")
-    base = Path(args.source)
+    if 'source' in args:
+        base = Path(args.source)
+    else:
+        base = config.source_dir
     print("Base path to exported data is ", base)
     condition_path = base / "clinical-records"
     assert base.exists()
@@ -297,7 +300,7 @@ def go():
         chart_file_name = sanitize_filename_manual(F"health_plot_{args.stat}.html")
 
         do_vital(condition_path, args.stat, args.after, print_data=args.print,
-                 vplot=args.plot, csv_format=args.csv_format, category_name="Vital Signs", file_name=chart_file_name)
+                 vplot=args.plot, csv_format=args.csv_format, category_name="Vital Signs", chart_file_name=chart_file_name)
 
     if args.list_vitals:
         print_vitals(observation_files=yield_observation_files(condition_path), category="Vital Signs")
