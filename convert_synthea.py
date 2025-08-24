@@ -59,6 +59,28 @@ def normalize_fhir_to_apple_format(resource: Dict) -> Dict:
                     normalized_categories.append({"text": "Unknown"})
             resource['category'] = normalized_categories
     
+    # Normalize date formats - convert timezone offsets to Z format
+    # Apple Health export uses UTC dates ending in Z
+    date_fields = ['effectiveDateTime', 'issued', 'performedDateTime', 'authoredOn', 'recordedDate']
+    for field in date_fields:
+        if field in resource and isinstance(resource[field], str):
+            date_str = resource[field]
+            # Convert timezone offset format to Z format
+            if date_str.endswith(('-07:00', '-08:00', '+00:00')) or '-' in date_str[-6:] or '+' in date_str[-6:]:
+                try:
+                    from datetime import datetime
+                    # Parse the date with timezone and convert to UTC
+                    if date_str.endswith('Z'):
+                        continue  # Already in correct format
+                    elif '+' in date_str[-6:] or '-' in date_str[-6:]:
+                        # Handle timezone offset format
+                        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                        # Convert to UTC and format as expected
+                        utc_dt = dt.utctimetuple()
+                        resource[field] = datetime(*utc_dt[:6]).strftime('%Y-%m-%dT%H:%M:%SZ')
+                except:
+                    pass  # Keep original if conversion fails
+    
     return resource
 
 
