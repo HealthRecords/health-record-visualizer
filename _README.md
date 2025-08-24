@@ -69,6 +69,11 @@ I am using python 3.12.2
 ## text_ui gives a simple, menu based command line tool
 ```python text_ui```
 
+## Plot a statistc/test result
+```
+/Users/tomhill/PycharmProjects/HealthDataApple/health.py -s "Blood Pressure" --plot --print --after 2023-01-01 -l --source /Users/tomhill/Downloads/apple_health_export
+```
+
 ## Look at Apple health data. 
 This tools is just getting started, today.
 ```python xml-reader --help```
