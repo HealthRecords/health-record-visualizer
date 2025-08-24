@@ -146,6 +146,9 @@ class Observation:
     data: list[ValueQuantity] = None
     range: Optional[ReferenceRange] = None
     filename: Path = None
+    # Some tests have multiple sources.
+    # For example, SpO2 comes from the Apple Watch and an Oximeter, which also writes to Apple Health
+    source_name: str = None
 
 
 def convert_units(v, u):
