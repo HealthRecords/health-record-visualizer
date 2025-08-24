@@ -20,6 +20,16 @@ class Test(TestCase):
         self.assertEqual(observation.data[1].unit, 'mm[Hg]')
         self.assertEqual(observation.data[1].name, 'Diastolic blood pressure')
 
+    def test_extract_value2(self):
+        test_file = "export/apple_health_export/clinical-records/Observation-3A0381CD-A94B-43B2-A6C7-E814377D72C1.json"
+        observation = extract_value(test_file, StatInfo("Vital Signs", "SpO2"))
+        self.assertEqual("SpO2", observation.name)
+        self.assertEqual("2022-03-17T14:37:00Z", observation.date)
+        self.assertEqual(97, observation.data[0].value)
+        self.assertEqual('%', observation.data[0].unit)
+        self.assertIsNone(observation.range)
+
+
     def test_list_available(self):
         test_file = "test_data/Observation-test-bp.json"
         vitals = list_vitals([test_file], "Vital Signs")
