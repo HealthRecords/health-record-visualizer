@@ -109,13 +109,13 @@ def get_test_results():
                 ob = Observation(name=element.attrib['displayName'])
             elif find(element_stack, ["component", "observation","text", "value"]):
                 ob.value = element.text
-            elif find(element_stack, ["component", "observation","text", "unit"]):  # TODO Shouldn't this have a find() call to make sure we don't get lots of units?
+            elif find(element_stack, ["component", "observation","text", "unit"]):
                 ob.unit = element.text
                 count += 1
-                print(F"{index:7}: {count_sources}: {ob}")
+                print(F"{index:8}: {count_sources}: {ob}")
         elif event == "end":
             # Some elements/attributes are not set while processing the start tag, so we have to pick them up here.
-            if find(element_stack, ["text", "sourceName"]):
+            if find(element_stack, ["component", "observation", "text", "sourceName"]):
                 count_sources += 1
                 if element.text is None:
                     # print("None")
@@ -123,7 +123,7 @@ def get_test_results():
                     ob.sourceName = "None"
                 else:
                     ob.sourceName = unicodedata.normalize("NFKD", element.text)
-                print(F"{index:7}: {count_sources}: {ob} END")
+                print(F"{index:8}: {count_sources}: {ob} END")
             element_stack.pop()
     print(F"Found {count:,} observations.")
     print(F"None count {none_count:,}")
