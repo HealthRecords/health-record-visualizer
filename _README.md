@@ -6,8 +6,8 @@ This repository shows how I am exploring my downloaded Apple Health and Kaiser m
 I am not medically trained, and have no documentation on the file format. This code is NOT for making medical decisions. There may be missing data and actual errors. I recommend discussing anything interesting you find with your doctor.
 
 ## Why?
-My initial goal was to graph my weight and blood-pressure over time. Kaiser's app allows you to graph test results, 
-but I have not found a way to graph vital signs recorded over time. You can look at each record, one at a time, 
+My initial goal was to graph my weight and blood-pressure over time. Kaiser's app allows you to graph *test results*, 
+but I have not found a way to graph *vital signs* recorded over time. You can look at each record, one at a time, 
 but who wants to do that?
 So, this tool will now graph any Kaiser test results (at least in formats I have seen), including those, like 
 blood pressure that have two results per test (like 120/90).
@@ -21,7 +21,9 @@ blood pressure that have two results per test (like 120/90).
 4. For me, it offered an airdrop option to my mac, but you can save it to files, I think, and move it where you want from there.
 5. What you get is a single zip file. When you expand it, you get a large (1GB in my case) directory of files. 
 6. It looks like all of the Kaiser files are json, in the clinical-records directory.
-7. The Apple watch and other data from the iPhone are in export_cda.xml, I haven't gotten to export.xml yet.
+7. The Apple watch and other data from the iPhone are in export_cda.xml. This includes things that other devices write to 
+   Apple Health.
+1. I haven't gotten to export.xml yet.
 6. Explore!
 
 All of the above should be possible without an iPhone, but that's how I did it.
@@ -73,7 +75,7 @@ This tools is just getting started, today.
 
 
 # Alternatives
-This is a weekend project. You are welcome to use it, and feedback is welcome. It's sweet spot is probably just
+This is a weekend project, not a product. You are welcome to use it, and feedback is welcome. It's sweet spot is probably just
 describing and giving example code for people who want to hack their own medical data. 
 
 If you want a more polished or supported alternative, you might want to look at
