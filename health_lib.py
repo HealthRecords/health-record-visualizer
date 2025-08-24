@@ -1,4 +1,4 @@
-"""
+""""
 This library provides a way to explore your health information.
 
 Design note: This is an exploration tool, not a product. As I don't have documentation for the file formats,
@@ -6,34 +6,14 @@ I try to put assertions in, to verify my assumptions, like "A referenceRange onl
 I have seen, but there are probably millions of cases I have not seen, yet. It's better to hit an assertion and fix
 it, than to silently hide information.
 """
-import glob
 import json
 import sys
-from io import StringIO
 from pathlib import Path
-from typing import NoReturn, Iterable, Optional
+from typing import Iterable, Optional
 import re
-import argparse
-from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import csv
+
 from dataclasses import dataclass
 from collections import Counter
-
-
-# TODO Split this file into UI code, and library code. We already have text_ui, and xml_reader which use this file.
-#       Should be able to pass in an output function (print, plot with matplotlib, generate html page, etc.
-# TODO print_condition and print_medicines should be generalized and combined.
-# TODO Do we want to have an option to process multiple or all stats in one run?
-# TODO Should be able to graph anything with a value quantity and a date. This is only observations, at least
-#      in my data. Need to handle string values for Observations
-# TODO When getting multiple stats, I reread ALL the observation files for each stat. Optimize.
-# TODO I don't currently handle the difference between < and <= on reference ranges. Is there really a difference?
-# TODO New format for valueQuantity, see ValueQuantity doc string
-# TODO Some data appears to be missing from my download (PSA).
-# TODO Check single ended string referenceRanges, like "<50". How well does that graph? I treat this as
-#       -sys.maxsize < X < 50
 
 
 @dataclass
@@ -156,7 +136,7 @@ class ReferenceRange:
 
         return None  # TODO extract from text field, where possible.
 
-@dataclass
+@dataclass(kw_only=True)
 class Observation:
     """
     This holds data from one file, which records an observation, such as height or blood pressure.
@@ -202,6 +182,8 @@ def get_reference_range(rl: list) -> ReferenceRange:
     text = r['text']
     return ReferenceRange(low, high, text)
 
+
+value_strings_seen = set()
 def extract_value_helper(*, filename: str, condition: dict, stat_info) -> Optional[Observation]:
     """
 
@@ -210,7 +192,7 @@ def extract_value_helper(*, filename: str, condition: dict, stat_info) -> Option
     :param stat_info: contains
         category_name: Filtering to this category, like "lab" or "Vital Sign"
         name:  The name of the stat / vital sign we are looking for
-    :return:
+    :return: Optional[Observation]
     """
     category_name, sign_name = stat_info.category_name, stat_info.name
     category_info = condition['category']
@@ -229,8 +211,12 @@ def extract_value_helper(*, filename: str, condition: dict, stat_info) -> Option
         if "valueQuantity" in condition:
             v = condition["valueQuantity"]["value"]
             if "unit" not in condition["valueQuantity"]:
-                print("Debug: no units in valueQuantity. ", filename)
-                u = "NoUnit."
+                verbose = False
+                if verbose:
+                    print("Debug: no units in valueQuantity. ", sign_name, v, filename)
+                    u = "NoUnits"
+                else:
+                    u = ""
             else:
                 u = condition["valueQuantity"]["unit"]
                 v, u = convert_units(v, u)
@@ -239,7 +225,7 @@ def extract_value_helper(*, filename: str, condition: dict, stat_info) -> Option
                 rr = get_reference_range(condition["referenceRange"])
             else:
                 rr = None
-            return Observation(t, d, [vq], rr, filename)
+            return Observation(name=t, date=d, data=[vq], range=rr, filename=Path(filename))
 
         elif "component" in condition:
             sub_values = []
@@ -252,10 +238,18 @@ def extract_value_helper(*, filename: str, condition: dict, stat_info) -> Option
 
                 sub_values.append(vq)
                 reference_range = None
-            return Observation(t, d, sub_values)
+            return Observation(name=t, date=d, data=sub_values)
         elif "valueString" in condition:
-            val = condition["valueString"]
-            print(F"We don't handle 'valueString' yet: value is '{val}'")
+            # TODO Do we even need to check this? I see only two that could possibly graph, and both are ranges:
+            #      "    >60", and "1-2", maybe add a verbose option to print these. For now, they don't matter.
+            verbose = False
+            if verbose:
+            # val = condition["valueString"]
+            # global value_strings_seen
+            # if val not in value_strings_seen:
+            #     print(F"We don't handle 'valueString' yet: value is '{val}'")
+            #     value_strings_seen.add(val)
+                pass
             return None
         else:
             print(F"*** No value found in {filename} ***")
@@ -303,10 +297,11 @@ sign_name: str, *, category_name
     """
     values = []
     for p in observation_files:
-        print(p)
         value = extract_value(p, stat_info)
         if value is not None:
             values.append(value)
+        else:
+            pass
     values = sorted(values, key=lambda x: x.date)
     return values
 
