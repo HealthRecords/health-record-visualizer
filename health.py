@@ -207,7 +207,7 @@ def parse_args():
 
 
 def do_vital(condition_path: Path, vital: str, after: str, *, print_data: bool, vplot: bool, csv_format: bool,
-            category_name) -> NoReturn:
+            category_name, file_name) -> NoReturn:
     if not print_data and not vplot:
         print("You need to select at least one of --plot or --print with --stat")
         return
@@ -248,7 +248,19 @@ def do_vital(condition_path: Path, vital: str, after: str, *, print_data: bool, 
         else:
             raise ValueError(f"Unexpected number of data values. {len(first.data)}.")
 
-        plot(dates, values_1, values_2, vital, data_name_1, data_name_2)
+        plot(dates, values_1, values_2, vital, data_name_1, data_name_2, file_name=file_name)
+
+import re
+import unicodedata
+
+def sanitize_filename_manual(filename, max_length=128):
+    normalized = unicodedata.normalize('NFKD', filename)
+    cleaned = re.sub(r'[^a-zA-Z0-9.\-_ ]', ' ', normalized)
+    sanitized = cleaned.replace(' ', '_')
+    sanitized = sanitized[:max_length]
+    if not sanitized:
+        sanitized = 'unnamed_file'
+    return sanitized
 
 
 def go():
@@ -282,8 +294,10 @@ def go():
         print_medicines(condition_path, args.csv_format, "MedicationRequest*.json", include_inactive)
 
     if args.stat:
+        chart_file_name = sanitize_filename_manual(F"health_plot_{args.stat}.html")
+
         do_vital(condition_path, args.stat, args.after, print_data=args.print,
-                 vplot=args.plot, csv_format=args.csv_format, category_name="Vital Signs")
+                 vplot=args.plot, csv_format=args.csv_format, category_name="Vital Signs", file_name=chart_file_name)
 
     if args.list_vitals:
         print_vitals(observation_files=yield_observation_files(condition_path), category="Vital Signs")
@@ -294,8 +308,10 @@ def go():
         if len(param) == 1:
             print_vitals(observation_files=yield_observation_files(condition_path), category=param[0])
         elif len(param) == 2:
+            stat = param[1]
+            chart_file_name = sanitize_filename_manual(F"health_plot_{stat}.html")
             do_vital(condition_path, param[1], args.after, print_data=args.print, vplot=args.plot,
-                     csv_format=args.csv_format, category_name=param[0])
+                     csv_format=args.csv_format, category_name=param[0], file_name=chart_file_name)
         else:
             print("Invalid format: use -g category:code     like '-g \"Vital Signs:Blood Pressure\"")
 
