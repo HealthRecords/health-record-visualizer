@@ -205,13 +205,13 @@ def sparks(stats: list[list[Observation]],
            title: str = None,
            head_scripts: list[str] = (),
            head_styles=(),
-           days=None):
+           days=None, output_file=None):
 
     if not stats or not stats[0]:
         print("No data found for to generate sparklines from")
         return
 
-    with open("output/sparkbase.html", "w") as fff:
+    with open(output_file, "w") as fff:
         html_page(fff, stats, title, head_scripts, head_styles, days=days)
 
 styles: str = """.grid-container {
@@ -261,7 +261,7 @@ def group_by_days(stats_in: list[list[Observation]], source_device_name=None) ->
     return stats_out
 
 
-def vitals(stats: list[StatInfo], graph_title="Graph", after: Optional[str]=None) -> None:
+def vitals(stats: list[StatInfo], graph_title="Graph", after: Optional[str]=None, output_file:str="output/sparkbase.html") -> None:
     """
     print a graph of the requests stats to a currently hardcoded file.
     :param stats: The stats to chart.
@@ -291,7 +291,7 @@ def vitals(stats: list[StatInfo], graph_title="Graph", after: Optional[str]=None
             ws = [w for w in ws if ad < datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ')]
         if ws:
             stats_to_graph.append(ws)
-    sparks(stats_to_graph, head_styles=[styles], title=graph_title)
+    sparks(stats_to_graph, head_styles=[styles], title=graph_title, output_file=output_file)
 
 if __name__ == "__main__":
     base: Path = Path("export/apple_health_export")
@@ -342,14 +342,15 @@ if __name__ == "__main__":
             # Respiratory rate
         else:  # plot
             display_name = args.cat
-            cat = "Apple"
+            # cat = "Apple"
             assert cat
             observations = get_test_results(display_name)
             stats_to_graph = [[ob for ob in observations]]
             if args.days:
-                source_device = "EMAY Oximeter"
+                source_device = cat
                 stats_to_graph = group_by_days(stats_to_graph, source_device)
-            sparks(stats_to_graph, head_styles=[styles], title=cat + " : " + display_name, days=args.days)
+            sparks(stats_to_graph, head_styles=[styles], title=cat + " : " + display_name,
+                   days=args.days, output_file=args.file)
             sys.exit(0)
 
     else:
@@ -368,5 +369,5 @@ if __name__ == "__main__":
             sys.exit(0)
         else:
             vsi: list[StatInfo] = [StatInfo(cat, name) for name in vs]
-            vitals(vsi, graph_title=cat, after=args.after)
+            vitals(vsi, graph_title=cat, after=args.after, output_file=args.file)
 
