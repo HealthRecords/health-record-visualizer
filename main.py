@@ -105,11 +105,11 @@ async def observations_page(request: Request):
     """Observations main page showing categories"""
     try:
         _, clinical_path = get_health_paths()
-        categories, _, file_count = list_categories(clinical_path, False, one_prefix="Observation")
+        categories, counter, file_count = list_categories(clinical_path, False, one_prefix="Observation")
         
-        # Convert to list of dicts for template
+        # Convert to list of dicts for template with counts
         category_items = [
-            {"name": category, "url": f"/observations/{category.lower().replace(' ', '-')}"}
+            {"name": category, "count": counter[category], "url": f"/observations/{category.lower().replace(' ', '-')}"}
             for category in categories
         ]
         
