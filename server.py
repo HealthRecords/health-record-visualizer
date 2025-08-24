@@ -1,9 +1,10 @@
 # https://github.com/codingforentrepreneurs/Pi-Awesome/blob/main/how-tos/Create%20a%20Minimal%20Web%20Application%20with%20Nginx%2C%20Python%2C%20Flask%20%26%20Raspberry%20Pi.md
 import os
-from pathlib import Path
 
 from flask import Flask, render_template
 import logging
+
+import config
 from health_lib import list_prefixes
 
 # Configuration for logging
@@ -17,8 +18,9 @@ app = Flask(__name__)
 @app.route('/clinical')
 def serve_clinical():
     try:
-        # Set the path to the directory where you have expanded the apple healh export file
-        export_path = Path('/Users/tomhill/Downloads/AppleHealth/apple_health_export')
+        # Set the path to the directory where you have expanded the apple health export file
+        # export_path = Path('/Users/tomhill/Downloads/AppleHealth/apple_health_export')
+        export_path = config.source_dir
         assert os.path.exists("templates/index.html")
         observation_path = condition_path = export_path / "clinical-records"
         options = list(list_prefixes(observation_path).keys())
@@ -26,7 +28,7 @@ def serve_clinical():
         return render_template('index.html', urls=options, back="/")
     except Exception as e:
         logging.exception(e)
-        return "An error occurred", 500
+        return "An error occurred: "+e, 500
 
 
 @app.route('/')
