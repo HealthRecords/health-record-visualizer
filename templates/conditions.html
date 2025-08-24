@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2">
+                    <i class="bi bi-clipboard2-pulse text-warning me-2"></i>
+                    Medical Conditions
+                </h1>
+                <p class="text-muted mb-0">
+                    Diagnosed conditions and health issues
+                </p>
+            </div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary" onclick="exportData('csv')">
+                    <i class="bi bi-download me-1"></i>
+                    Export CSV
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="refreshData()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Row -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-funnel me-2"></i>
+                    Filter Conditions
+                </h6>
+                <form id="filterForm" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="statusFilter" class="form-label">Clinical Status</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="searchCondition" class="form-label">Search Condition</label>
+                        <input type="text" class="form-control" id="searchCondition" placeholder="Search by name...">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="yearFilter" class="form-label">Year</label>
+                        <select class="form-select" id="yearFilter">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" onclick="applyFilters()">
+                            <i class="bi bi-funnel me-1"></i>
+                            Apply Filters
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Clear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-bar-chart me-2"></i>
+                    Summary
+                </h6>
+                <div id="summary">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-table me-2"></i>
+                    Conditions List
+                </h5>
+                <span class="badge bg-primary" id="recordCount">Loading...</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="conditionsTable">
+                        <thead>
+                            <tr>
+                                <th>Condition</th>
+                                <th>Recorded Date</th>
+                                <th>Clinical Status</th>
+                                <th>Verification Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="conditionsTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading conditions...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allConditions = [];
+let filteredConditions = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadConditions();
+});
+
+function loadConditions() {
+    showLoading();
+    
+    fetch('/api/conditions')
+        .then(response => response.json())
+        .then(data => {
+            allConditions = data.conditions || [];
+            filteredConditions = [...allConditions];
+            
+            updateTable();
+            updateSummary();
+            populateYearFilter();
+        })
+        .catch(error => {
+            console.error('Error loading conditions:', error);
+            showError('Failed to load conditions: ' + error.message);
+        });
+}
+
+function showLoading() {
+    document.getElementById('conditionsTableBody').innerHTML = `
+        <tr>
+            <td colspan="5" class="text-center">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading conditions...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    document.getElementById('summary').innerHTML = `
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+}
+
+function updateTable() {
+    const tbody = document.getElementById('conditionsTableBody');
+    
+    if (filteredConditions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No conditions found matching the current filters
+                </td>
+            </tr>
+        `;
+        document.getElementById('recordCount').textContent = '0 conditions';
+        return;
+    }
+    
+    let html = '';
+    filteredConditions.forEach((condition, index) => {
+        const date = new Date(condition.recorded_date).toLocaleDateString();
+        const statusColor = getStatusColor(condition.clinical_status);
+        
+        html += `
+            <tr>
+                <td>
+                    <strong>${condition.condition_text}</strong>
+                </td>
+                <td>${date}</td>
+                <td>
+                    <span class="badge bg-${statusColor}">${condition.clinical_status}</span>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${condition.verification_status}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" 
+                            onclick="viewConditionDetails(${index})"
+                            data-bs-toggle="tooltip" 
+                            title="View details">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    document.getElementById('recordCount').textContent = `${filteredConditions.length} conditions`;
+    
+    // Initialize tooltips
+    const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltips.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+function getStatusColor(status) {
+    switch(status.toLowerCase()) {
+        case 'active': return 'danger';
+        case 'inactive': return 'secondary';
+        case 'resolved': return 'success';
+        default: return 'primary';
+    }
+}
+
+function updateSummary() {
+    if (allConditions.length === 0) {
+        document.getElementById('summary').innerHTML = `
+            <p class="text-muted mb-0">No conditions available</p>
+        `;
+        return;
+    }
+    
+    const total = allConditions.length;
+    const active = allConditions.filter(c => c.clinical_status.toLowerCase() === 'active').length;
+    const resolved = allConditions.filter(c => c.clinical_status.toLowerCase() === 'resolved').length;
+    const filtered = filteredConditions.length;
+    
+    document.getElementById('summary').innerHTML = `
+        <div class="row text-center">
+            <div class="col-6">
+                <h6 class="text-primary mb-1">${total}</h6>
+                <small class="text-muted">Total</small>
+            </div>
+            <div class="col-6">
+                <h6 class="text-danger mb-1">${active}</h6>
+                <small class="text-muted">Active</small>
+            </div>
+            <div class="col-6 mt-2">
+                <h6 class="text-success mb-1">${resolved}</h6>
+                <small class="text-muted">Resolved</small>
+            </div>
+            <div class="col-6 mt-2">
+                <h6 class="text-info mb-1">${filtered}</h6>
+                <small class="text-muted">Filtered</small>
+            </div>
+        </div>
+    `;
+}
+
+function populateYearFilter() {
+    const years = [...new Set(allConditions.map(c => 
+        new Date(c.recorded_date).getFullYear()
+    ))].sort((a, b) => b - a);
+    
+    const yearFilter = document.getElementById('yearFilter');
+    yearFilter.innerHTML = '<option value="">All Years</option>';
+    
+    years.forEach(year => {
+        yearFilter.innerHTML += `<option value="${year}">${year}</option>`;
+    });
+}
+
+function applyFilters() {
+    const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+    const searchText = document.getElementById('searchCondition').value.toLowerCase();
+    const yearFilter = parseInt(document.getElementById('yearFilter').value);
+    
+    filteredConditions = allConditions.filter(condition => {
+        // Status filter
+        if (statusFilter && !condition.clinical_status.toLowerCase().includes(statusFilter)) {
+            return false;
+        }
+        
+        // Search filter
+        if (searchText && !condition.condition_text.toLowerCase().includes(searchText)) {
+            return false;
+        }
+        
+        // Year filter
+        if (yearFilter && new Date(condition.recorded_date).getFullYear() !== yearFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    updateTable();
+    updateSummary();
+}
+
+function clearFilters() {
+    document.getElementById('filterForm').reset();
+    filteredConditions = [...allConditions];
+    updateTable();
+    updateSummary();
+}
+
+function viewConditionDetails(index) {
+    const condition = filteredConditions[index];
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-clipboard2-pulse me-2"></i>
+                        Condition Details
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Condition:</dt>
+                        <dd class="col-sm-8">${condition.condition_text}</dd>
+                        
+                        <dt class="col-sm-4">Recorded Date:</dt>
+                        <dd class="col-sm-8">${new Date(condition.recorded_date).toLocaleDateString()}</dd>
+                        
+                        <dt class="col-sm-4">Clinical Status:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-${getStatusColor(condition.clinical_status)}">
+                                ${condition.clinical_status}
+                            </span>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Verification:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-secondary">${condition.verification_status}</span>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Resource Type:</dt>
+                        <dd class="col-sm-8">${condition.resource_type}</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // Clean up modal after it's hidden
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+function exportData(format) {
+    const data = filteredConditions.map(condition => ({
+        condition: condition.condition_text,
+        recorded_date: condition.recorded_date,
+        clinical_status: condition.clinical_status,
+        verification_status: condition.verification_status,
+        resource_type: condition.resource_type
+    }));
+    
+    if (format === 'csv') {
+        const csv = convertToCSV(data);
+        downloadFile(csv, 'conditions.csv', 'text/csv');
+    }
+}
+
+function convertToCSV(data) {
+    if (data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => headers.map(header => 
+            `"${row[header] || ''}"`
+        ).join(','))
+    ].join('\n');
+    
+    return csvContent;
+}
+
+function downloadFile(content, filename, contentType) {
+    const blob = new Blob([content], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+}
+
+function refreshData() {
+    loadConditions();
+}
+
+function showError(message) {
+    document.getElementById('conditionsTableBody').innerHTML = `
+        <tr>
+            <td colspan="5" class="text-center">
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+</script>
+{% endblock %}

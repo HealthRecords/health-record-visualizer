@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2">
+                    <i class="bi bi-activity text-success me-2"></i>
+                    {{ category }} - Vitals
+                </h1>
+                <p class="text-muted mb-0">
+                    Individual measurements within {{ category }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if vitals %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="text" class="form-control" id="vitalSearch" placeholder="Search vitals...">
+        </div>
+    </div>
+</div>
+
+<div class="row g-3" id="vitalsGrid">
+    {% for vital in vitals %}
+    <div class="col-lg-4 col-md-6 vital-item" data-name="{{ vital.name.lower() }}">
+        <div class="card shadow-sm hover-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h6 class="card-title mb-0">{{ vital.name }}</h6>
+                    <span class="badge bg-primary">{{ vital.count }}</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ vital.url }}" class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="bi bi-graph-up me-1"></i>
+                        View Chart
+                    </a>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            onclick="previewData('{{ category }}', '{{ vital.name }}')"
+                            data-bs-toggle="tooltip" 
+                            title="Quick preview">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- No results message -->
+<div id="noResults" class="row" style="display: none;">
+    <div class="col-12">
+        <div class="alert alert-info text-center" role="alert">
+            <i class="bi bi-search me-2"></i>
+            No vitals found matching your search.
+        </div>
+    </div>
+</div>
+
+<!-- Quick Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">
+                    <i class="bi bi-eye me-2"></i>
+                    Quick Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="viewFullChart">View Full Chart</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>No vitals found in {{ category }}.</strong>
+            <p class="mb-0 mt-2">
+                This category may not contain any measurable data points.
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('vitalSearch');
+    const vitalItems = document.querySelectorAll('.vital-item');
+    const noResults = document.getElementById('noResults');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            let visibleCount = 0;
+            
+            vitalItems.forEach(item => {
+                const name = item.dataset.name;
+                if (name.includes(searchTerm)) {
+                    item.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            if (visibleCount === 0 && searchTerm.length > 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+            }
+        });
+    }
+    
+    // Hover effects
+    const cards = document.querySelectorAll('.hover-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.transition = 'transform 0.2s ease';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Quick preview functionality
+let currentPreviewUrl = '';
+
+function previewData(category, vital) {
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const modalTitle = document.getElementById('previewModalLabel');
+    const previewContent = document.getElementById('previewContent');
+    const viewFullButton = document.getElementById('viewFullChart');
+    
+    // Set modal title
+    modalTitle.innerHTML = `<i class="bi bi-eye me-2"></i>Preview: ${vital}`;
+    
+    // Set full chart URL for button
+    currentPreviewUrl = `/observations/${category.toLowerCase().replace(' ', '-')}/${vital.toLowerCase().replace(' ', '-')}`;
+    viewFullButton.onclick = () => window.location.href = currentPreviewUrl;
+    
+    // Show loading spinner
+    previewContent.innerHTML = `
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Fetch preview data
+    const apiUrl = `/api/observations/${category.toLowerCase().replace(' ', '-')}/${vital.toLowerCase().replace(' ', '-')}/data`;
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.data && data.data.length > 0) {
+                const recentData = data.data.slice(-10); // Show last 10 entries
+                let html = `
+                    <h6>Recent Measurements (last ${recentData.length} entries)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Value</th>
+                                    <th>Unit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                recentData.forEach(point => {
+                    const date = new Date(point.date).toLocaleDateString();
+                    html += `
+                        <tr>
+                            <td>${date}</td>
+                            <td>${point.value}</td>
+                            <td>${point.unit}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted small mt-2">
+                        Total entries: ${data.count} | 
+                        <a href="${currentPreviewUrl}">View full chart and all data</a>
+                    </p>
+                `;
+                
+                previewContent.innerHTML = html;
+            } else {
+                previewContent.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No data available for ${vital}.
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            previewContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error loading preview: ${error.message}
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}

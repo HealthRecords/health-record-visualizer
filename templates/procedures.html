@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2">
+                    <i class="bi bi-bandaid text-info me-2"></i>
+                    Medical Procedures
+                </h1>
+                <p class="text-muted mb-0">
+                    Medical procedures and interventions
+                </p>
+            </div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary" onclick="exportData('csv')">
+                    <i class="bi bi-download me-1"></i>
+                    Export CSV
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="refreshData()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Row -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-funnel me-2"></i>
+                    Filter Procedures
+                </h6>
+                <form id="filterForm" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="statusFilter" class="form-label">Status</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Statuses</option>
+                            <option value="completed">Completed</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="not-done">Not Done</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="searchProcedure" class="form-label">Search Procedure</label>
+                        <input type="text" class="form-control" id="searchProcedure" placeholder="Search by name...">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="yearFilter" class="form-label">Year</label>
+                        <select class="form-select" id="yearFilter">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" onclick="applyFilters()">
+                            <i class="bi bi-funnel me-1"></i>
+                            Apply Filters
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Clear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-bar-chart me-2"></i>
+                    Summary
+                </h6>
+                <div id="summary">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-table me-2"></i>
+                    Procedures List
+                </h5>
+                <span class="badge bg-primary" id="recordCount">Loading...</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="proceduresTable">
+                        <thead>
+                            <tr>
+                                <th>Procedure</th>
+                                <th>Performed Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proceduresTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading procedures...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allProcedures = [];
+let filteredProcedures = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadProcedures();
+});
+
+function loadProcedures() {
+    showLoading();
+    
+    fetch('/api/procedures')
+        .then(response => response.json())
+        .then(data => {
+            allProcedures = data.procedures || [];
+            filteredProcedures = [...allProcedures];
+            
+            updateTable();
+            updateSummary();
+            populateYearFilter();
+        })
+        .catch(error => {
+            console.error('Error loading procedures:', error);
+            showError('Failed to load procedures: ' + error.message);
+        });
+}
+
+function showLoading() {
+    document.getElementById('proceduresTableBody').innerHTML = `
+        <tr>
+            <td colspan="4" class="text-center">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading procedures...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    document.getElementById('summary').innerHTML = `
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+}
+
+function updateTable() {
+    const tbody = document.getElementById('proceduresTableBody');
+    
+    if (filteredProcedures.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No procedures found matching the current filters
+                </td>
+            </tr>
+        `;
+        document.getElementById('recordCount').textContent = '0 procedures';
+        return;
+    }
+    
+    let html = '';
+    filteredProcedures.forEach((procedure, index) => {
+        const date = new Date(procedure.performed_date).toLocaleDateString();
+        const statusColor = getStatusColor(procedure.status);
+        
+        html += `
+            <tr>
+                <td>
+                    <strong>${procedure.procedure_text}</strong>
+                </td>
+                <td>${date}</td>
+                <td>
+                    <span class="badge bg-${statusColor}">${procedure.status}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" 
+                            onclick="viewProcedureDetails(${index})"
+                            data-bs-toggle="tooltip" 
+                            title="View details">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    document.getElementById('recordCount').textContent = `${filteredProcedures.length} procedures`;
+    
+    // Initialize tooltips
+    const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltips.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+function getStatusColor(status) {
+    switch(status.toLowerCase()) {
+        case 'completed': return 'success';
+        case 'in-progress': return 'primary';
+        case 'not-done': return 'danger';
+        case 'stopped': return 'secondary';
+        case 'unknown': return 'warning';
+        default: return 'info';
+    }
+}
+
+function updateSummary() {
+    if (allProcedures.length === 0) {
+        document.getElementById('summary').innerHTML = `
+            <p class="text-muted mb-0">No procedures available</p>
+        `;
+        return;
+    }
+    
+    const total = allProcedures.length;
+    const completed = allProcedures.filter(p => p.status.toLowerCase() === 'completed').length;
+    const inProgress = allProcedures.filter(p => p.status.toLowerCase() === 'in-progress').length;
+    const filtered = filteredProcedures.length;
+    
+    document.getElementById('summary').innerHTML = `
+        <div class="row text-center">
+            <div class="col-6">
+                <h6 class="text-primary mb-1">${total}</h6>
+                <small class="text-muted">Total</small>
+            </div>
+            <div class="col-6">
+                <h6 class="text-success mb-1">${completed}</h6>
+                <small class="text-muted">Completed</small>
+            </div>
+            <div class="col-6 mt-2">
+                <h6 class="text-primary mb-1">${inProgress}</h6>
+                <small class="text-muted">In Progress</small>
+            </div>
+            <div class="col-6 mt-2">
+                <h6 class="text-info mb-1">${filtered}</h6>
+                <small class="text-muted">Filtered</small>
+            </div>
+        </div>
+    `;
+}
+
+function populateYearFilter() {
+    const years = [...new Set(allProcedures.map(p => 
+        new Date(p.performed_date).getFullYear()
+    ))].sort((a, b) => b - a);
+    
+    const yearFilter = document.getElementById('yearFilter');
+    yearFilter.innerHTML = '<option value="">All Years</option>';
+    
+    years.forEach(year => {
+        yearFilter.innerHTML += `<option value="${year}">${year}</option>`;
+    });
+}
+
+function applyFilters() {
+    const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+    const searchText = document.getElementById('searchProcedure').value.toLowerCase();
+    const yearFilter = parseInt(document.getElementById('yearFilter').value);
+    
+    filteredProcedures = allProcedures.filter(procedure => {
+        // Status filter
+        if (statusFilter && !procedure.status.toLowerCase().includes(statusFilter)) {
+            return false;
+        }
+        
+        // Search filter
+        if (searchText && !procedure.procedure_text.toLowerCase().includes(searchText)) {
+            return false;
+        }
+        
+        // Year filter
+        if (yearFilter && new Date(procedure.performed_date).getFullYear() !== yearFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    updateTable();
+    updateSummary();
+}
+
+function clearFilters() {
+    document.getElementById('filterForm').reset();
+    filteredProcedures = [...allProcedures];
+    updateTable();
+    updateSummary();
+}
+
+function viewProcedureDetails(index) {
+    const procedure = filteredProcedures[index];
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-bandaid me-2"></i>
+                        Procedure Details
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Procedure:</dt>
+                        <dd class="col-sm-8">${procedure.procedure_text}</dd>
+                        
+                        <dt class="col-sm-4">Performed Date:</dt>
+                        <dd class="col-sm-8">${new Date(procedure.performed_date).toLocaleDateString()}</dd>
+                        
+                        <dt class="col-sm-4">Status:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-${getStatusColor(procedure.status)}">
+                                ${procedure.status}
+                            </span>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Resource Type:</dt>
+                        <dd class="col-sm-8">${procedure.resource_type}</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // Clean up modal after it's hidden
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+function exportData(format) {
+    const data = filteredProcedures.map(procedure => ({
+        procedure: procedure.procedure_text,
+        performed_date: procedure.performed_date,
+        status: procedure.status,
+        resource_type: procedure.resource_type
+    }));
+    
+    if (format === 'csv') {
+        const csv = convertToCSV(data);
+        downloadFile(csv, 'procedures.csv', 'text/csv');
+    }
+}
+
+function convertToCSV(data) {
+    if (data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => headers.map(header => 
+            `"${row[header] || ''}"`
+        ).join(','))
+    ].join('\n');
+    
+    return csvContent;
+}
+
+function downloadFile(content, filename, contentType) {
+    const blob = new Blob([content], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+}
+
+function refreshData() {
+    loadProcedures();
+}
+
+function showError(message) {
+    document.getElementById('proceduresTableBody').innerHTML = `
+        <tr>
+            <td colspan="4" class="text-center">
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+</script>
+{% endblock %}
