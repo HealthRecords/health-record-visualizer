@@ -1,3 +1,7 @@
+"""
+This module contains functions for plotting.
+
+"""
 from datetime import datetime, timedelta
 
 from matplotlib import dates as mdates, pyplot as plt
