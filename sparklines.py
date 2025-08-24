@@ -84,22 +84,6 @@ def sparkline_pygal(data_x_str: list[str], data_y: list[float], graph_y_min,
                        graph_subject=None, data_name_1=None,
                              data_name_2=None, get_bytes=True)
 
-    html = F"""<!DOCTYPE html>
-    <html>
-    <head>
-        <title>Pygal Chart Example</title>
-    </head>
-    <body>
-    
-    <h2>Bar Chart</h2>
-    <img src="{chart_bytes}" alt="Bar Chart">
-    
-    </body>
-    </html>
-    """
-    with open("temp.html", "w") as f:
-        f.write(html)
-
     return F"""<img alt="health data chart" src="{chart_bytes}">"""
     # return F'<img src="data:image/svg;base64,{chart_bytes}'
 
