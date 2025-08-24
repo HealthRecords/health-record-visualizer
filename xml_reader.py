@@ -171,6 +171,8 @@ def get_test_results(display_name_wanted: Optional[str]) -> Generator[Observatio
                 # vq = ValueQuantity(float(element.text), unit, ob.name)
                 # ob.value = [vq]
 
+
+            # TODO: There is a "low" and a "high"
             if find(element_stack, ["component", "observation", "effectiveTime", "low"]):  # Just use "low" for now.
                 timestamp = element.attrib['value']
                 dt_obj = datetime.strptime(timestamp, '%Y%m%d%H%M%S%z')
