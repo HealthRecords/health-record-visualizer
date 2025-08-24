@@ -260,7 +260,7 @@ def extract_value(file: str, stat_info) -> Observation | None:
     Processes one file and extracts the value of a vital sign or other test, from it.
     :param file:
     :param stat_info: contains the sign_name ("Spo2") and the category, like "Lab"
-    :return: Optional[Observation
+    :return: Optional[Observation]
     """
     with open(file) as f:
         condition = json.load(f)
@@ -289,11 +289,11 @@ def filter_category(observation_files: Iterable[str], category: str) -> Iterable
 def extract_all_values(observation_files: Iterable[str], *, stat_info: StatInfo) -> list[Observation]:
     """
 sign_name: str, *, category_name
-    :param observation_files: iterable of files to read. Only Obser
+    :param observation_files: iterable of files to read. Only Observations are processed.
     :param stat_info: contains
         category_name: Filtering to this category, like "lab" or "Vital Sign"
         name:  The name of the stat / vital sign we are looking for
-    :return: Instance of class Observation or None
+    :return: list[list[Observation]]
     """
     values = []
     for p in observation_files:
@@ -307,6 +307,12 @@ sign_name: str, *, category_name
 
 
 def list_vitals(observation_files: Iterable[str], category: str) -> Counter:
+    """
+
+    :param observation_files: Iterable of file names
+    :param category: Filtering to this category, like "lab" or "Vital Signs"
+    :return: Counter: Vital Sign Name: Numebr of times seen
+    """
     vitals = Counter()
     signs_found = filter_category(observation_files, category)
     for observation in signs_found:
