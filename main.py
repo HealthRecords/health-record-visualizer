@@ -84,7 +84,8 @@ def get_menu_url(prefix: str) -> str:
         "MedicationRequest": "/medications",
         "Procedure": "/procedures",
         "AllergyIntolerance": "/allergies",
-        "DocumentReference": "/documents"
+        "DocumentReference": "/documents",
+        "DiagnosticReport": "/diagnosticreports"
     }
     return url_map.get(prefix, f"/data/{prefix.lower()}")
 
@@ -639,6 +640,45 @@ async def get_allergies() -> ConditionsResponse:
         return ConditionsResponse(conditions=allergies, count=len(allergies))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading allergies: {str(e)}")
+
+@app.get("/diagnosticreports", response_class=HTMLResponse)
+async def diagnosticreports_page(request: Request):
+    """Diagnostic reports page"""
+    return templates.TemplateResponse(
+        "conditions.html",  # Reuse conditions template for now
+        {
+            "request": request,
+            "title": "Diagnostic Reports",
+            "breadcrumb": [{"name": "Home", "url": "/"}, {"name": "Diagnostic Reports", "url": "/diagnosticreports"}]
+        }
+    )
+
+@app.get("/api/diagnosticreports")
+async def get_diagnosticreports():
+    """Get all diagnostic reports data - basic implementation"""
+    try:
+        _, clinical_path = get_health_paths()
+        path = clinical_path / "DiagnosticReport*.json"
+        reports = []
+        
+        for p in glob.glob(str(path)):
+            with open(p) as f:
+                report = json.load(f)
+                # Basic extraction - diagnostic reports have varied structures
+                reports.append({
+                    "resource_type": report.get('resourceType', 'DiagnosticReport'),
+                    "effective_date": report.get('effectiveDateTime', 'Unknown'),
+                    "status": report.get('status', 'Unknown'),
+                    "code": report.get('code', {}).get('text', 'Unknown Report Type'),
+                    "category": report.get('category', [{}])[0].get('text', 'Unknown') if report.get('category') else 'Unknown'
+                })
+        
+        # Sort by effective date (most recent first)
+        reports.sort(key=lambda x: x.get('effective_date', ''), reverse=True)
+        
+        return {"reports": reports, "count": len(reports)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading diagnostic reports: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
