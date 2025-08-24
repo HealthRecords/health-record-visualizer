@@ -10,19 +10,25 @@ Need to figure out how to scale each sparkline separately
 could also maybe use pygal, which sounds cool. But let's use matplotlib for now.
 
 
+# TODO It might make sense to graph from noon to noon, instead of midnight to midnight, since I'm gathering
+       stats for night times.
 TODO: Need to match the date range across all sparklines, if I'm going to line them up.
-TODO Group by days, so I can graph things like heart rate, that have thousands of points.
+TODO when grouped by date, you want all of them covering the same date.
+TODO: I probably need to have the same range on a single test, group by days. The all should be comparable.
 
-TODO: I need normal range for every test we want to plot (I guess it's not required, just nice to have).
-      It looks like what I want is in Observation-*.json files,
-      as referenceRange. It's in 2707 out of 4541 files.
 
 TODO: This file has a test name of "---": Observation-7881B1CD-55FD-42BD-8FFB-CE98D13C88CD.json, fix it.
+TOOD:    <statusCode code="completed"/>
+   <effectiveTime>
+    <low value="20000101000059-0800"/> this has a 24 year range. What does that mean? I bet it means I reset the
+                                       date from zero, while it was recording.
+    <high value="20240309160819-0800"/>
+   </effectiveTime>
 """
 import argparse
 import base64
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from typing import TextIO, Optional
@@ -31,7 +37,7 @@ from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 
 from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, list_vitals
-from plot_health import plot_pygal
+from plot_health import plot_pygal, plot_mat
 from xml_reader import get_test_results, get_all_test_types
 
 
@@ -57,7 +63,16 @@ def sparkline_mat(data_x_str: list[str], data_y: list[float], graph_y_min,
     for date in data_x_str:
         if date is None:
             print("XYZ")
+
     data_x = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in data_x_str]
+
+    # Find the date range
+    min_date = min(data_x)
+    max_date = max(data_x)
+    # Special case: If the data is all on one day, may the range go from
+    if min_date.date() == max_date.date():
+        min_date=min_date.date()
+        max_date = max_date.date() + timedelta(days=1)
 
     fig, axes = plt.subplots(1, 1, figsize=(fig_size_x, fig_size_y))
     # axes.axis('off')
@@ -66,6 +81,7 @@ def sparkline_mat(data_x_str: list[str], data_y: list[float], graph_y_min,
         plt.axhspan(normal_min, normal_max, color='green', alpha=0.3)
     else:
         normal_max = graph_y_max
+    axes.set_xlim([min_date, max_date])
     axes.set_ylim([graph_y_min, max(graph_y_max, normal_max)])
     if len(data_x) == 1:
         # TODO combine with plot() in plot_health.py
@@ -105,7 +121,8 @@ def sparklines(incoming: list[list[Observation]], debug=False) -> list[tuple[str
     :param incoming: a list of lists of Observations.
     :return: a list of (image tag, stat name, number of Observations, obs date as str) tuples
     """
-
+    # TODO Have a global graph_y_min, max. So all graphs are on the same page. This is for when you graph
+    # a single test, many times, one graph per day.
     outgoing: list[tuple[str, str, int, str]] = []
     for index in range(0, len(incoming)):
         one_ob_list = incoming[index]
@@ -317,10 +334,13 @@ if __name__ == "__main__":
     parser.add_argument('--days',  action=argparse.BooleanOptionalAction,
                         help=
                         'Group a single test results by day. Useful for things with a LOT of data, like heart rate.')
+    parser.add_argument('--device',  action='store',
+                        help=
+                        'Source Device, with --apple ')
 
     args = parser.parse_args()
     if (args.labs or args.vitals) and args.apple:
-        print("--labs and --vitals are not valid with --apple4-=")
+        print("--labs and --vitals are not valid with --apple")
         sys.exit(1)
     if args.vitals:
         cat = "Vital Signs"
@@ -347,7 +367,7 @@ if __name__ == "__main__":
             observations = get_test_results(display_name)
             stats_to_graph = [[ob for ob in observations]]
             if args.days:
-                source_device = cat
+                source_device = args.device
                 stats_to_graph = group_by_days(stats_to_graph, source_device)
             sparks(stats_to_graph, head_styles=[styles], title=cat + " : " + display_name,
                    days=args.days, output_file=args.file)
