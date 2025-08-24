@@ -6,11 +6,9 @@ This repository shows how I am exploring my downloaded Apple Health and Kaiser m
 I am not medically trained, and have no documentation on the file format. This code is NOT for making medical decisions. There may be missing data and actual errors. I recommend discussing anything interesting you find with your doctor.
 
 ## Why?
-My initial goal was to graph my weight and blood-pressure over time. Kaiser's app allows you to graph *test results*, 
-but I have not found a way to graph *vital signs* recorded over time. You can look at each record, one at a time, 
-but who wants to do that?
-So, this tool will now graph any Kaiser test results (at least in formats I have seen), including those, like 
-blood pressure that have two results per test (like 120/90).
+My original goal was simply to chart my weight and blood pressure over time. Kaiser’s app can generate graphs of lab test results, but I haven’t found any way to graph vital signs. You can view each vital sign entry individually, but that’s not very useful.
+
+This tool fills that gap: it can graph any Kaiser “Vital Sign” (such as weight) and also handle readings with two values per entry, like blood pressure (e.g., 120/90). In addition, it can print or graph test results, or anything else in the export with a recognizable format for values.
 
 # How to Get Your Kaiser Medical Record data
 
@@ -55,7 +53,7 @@ command line tool, as it examines the directories to see what files exist.
 # Running the Code
 This is currently a set of command-line applications. If you want a nice GUI, try one of the alternatives listed below.
 
-It assumes your zip is expanded to the 'export' directory, currently hard coded, in the current directory.
+The directory is currently hard coded in config.py, change it to point to your data directory.
 
 I am using python 3.12.2
 
@@ -74,7 +72,7 @@ I am using python 3.12.2
 /Users/tomhill/PycharmProjects/HealthDataApple/health.py -s "Blood Pressure" --plot --print --after 2023-01-01 -l --source /Users/tomhill/Downloads/apple_health_export
 ```
 
-## Look at Apple health data. 
+## Look at Apple Health data. 
 This tools is just getting started, today.
 ```python xml-reader --help```
 
