@@ -114,15 +114,25 @@ def sparkline_pygal(data_x_str: list[str], data_y: list[float], graph_y_min,
     return F"""<img alt="health data chart"  height="100" width="1000" src="{chart_bytes}">"""
     # return F"""<img alt="health data chart" style="max-height: 3rem; max-width: 30em" src="{chart_bytes}">"""
 
+def get_max(incoming: list[list[Observation]]):
+    global_max_y: float = 0
+    for obs in incoming:
+        for stat in obs:
+            for data in stat.data:
+                global_max_y = max(global_max_y, data.value)  # TODO: this ignores units. In proactice, tests I have seen all use the same units.
+    return global_max_y
 
-def sparklines(incoming: list[list[Observation]], debug=False) -> list[tuple[str, str, int, str]]:
+def sparklines(incoming: list[list[Observation]], *, days: bool, debug: bool) -> list[tuple[str, str, int, str]]:
     """
     Generate a list of sparklines.
     :param incoming: a list of lists of Observations.
+    :param days: True: We have one test, and are making one graph per day.
     :return: a list of (image tag, stat name, number of Observations, obs date as str) tuples
     """
     # TODO Have a global graph_y_min, max. So all graphs are on the same page. This is for when you graph
     # a single test, many times, one graph per day.
+    global_max_y: float = get_max(incoming)
+
     outgoing: list[tuple[str, str, int, str]] = []
     for index in range(0, len(incoming)):
         one_ob_list = incoming[index]
@@ -163,7 +173,10 @@ def sparklines(incoming: list[list[Observation]], debug=False) -> list[tuple[str
         else:
             baseline = min(data_y)
         graph_y_min = 0
-        graph_y_max = max(data_y)
+        if days:
+            graph_y_max = global_max_y
+        else:
+            graph_y_max = max(data_y)  # Local max
         img_info = sparkline(data_x, data_y, graph_y_min, graph_y_max,
                              normal_min, normal_max, 8, 1)
         outgoing.append((img_info, one_ob_list[0].name, len(one_ob_list), one_ob_list[0].date))
@@ -201,7 +214,7 @@ def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
     print("""</head>\n<body>""", file=f)
     if title is not None:
         print(F"<h1>{title}</H1>", file=f)
-    sparks = sparklines(incoming)
+    sparks = sparklines(incoming, days=days, debug=False)
     spark_len = len(sparks)
     print(
         F"""<div style="display: grid;grid-template-columns: 1fr 8fr; grid-template-rows: repeat({spark_len}, 5em);">"""
@@ -253,6 +266,7 @@ styles: str = """.grid-container {
 def group_by_days(stats_in: list[list[Observation]], source_device_name=None) -> list[list[Observation]]| None:
     if len(stats_in) == 0:
         return None
+    assert len(stats_in) == 1
     flat = []
     for stat in stats_in:
         flat.extend(stat)
