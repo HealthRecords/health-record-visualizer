@@ -123,7 +123,7 @@ def find_display_names(file_name: str, patterns: list[Pattern]):
                 names = []
 
             element_stack.pop()
-    return display_names, element_stack  # Only returning element_stack for test.
+    return sorted(display_names), element_stack  # Only returning element_stack for test.
 
 
 def get_test_results(display_name_wanted: Optional[str]) -> Generator[Observation, None, None]:
@@ -209,10 +209,12 @@ def print_test_results():
     #         print(tag)
 
 
-
 def get_all_test_types() -> Counter[str]:
     print("This may take a few minutes...")
-    names, _ = find_display_names("export/apple_health_export/export_cda.xml", ["component", "observation", "code"])
+    pn = Pattern(["component", "observation", "code"], "displayName")
+    ps = Pattern(["component", "observation", "text", "sourceName"], None)
+    patterns = [pn, ps]
+    names, _ = find_display_names("export/apple_health_export/export_cda.xml", patterns)
     return names
 
 def print_all_test_types():
