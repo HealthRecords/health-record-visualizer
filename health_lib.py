@@ -136,7 +136,7 @@ class ReferenceRange:
 
         return None  # TODO extract from text field, where possible.
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, slots=True )
 class Observation:
     """
     This holds data from one file, which records an observation, such as height or blood pressure.
