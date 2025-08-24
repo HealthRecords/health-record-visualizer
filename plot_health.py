@@ -62,11 +62,12 @@ def plot_echarts(
         .add_xaxis(xaxis_data=x_vals)
         .add_yaxis(
             series_name=label0 or "Series 1",
-            y_axis=values,
+            y_axis=[int(value) for value in values],
             is_symbol_show=True,
             symbol_size=6,
             is_smooth=False,
             linestyle_opts=opts.LineStyleOpts(width=2),
+            label_opts=opts.LabelOpts(is_show=False),  # ← hide labels initially
         )
         .set_global_opts(
             title_opts=opts.TitleOpts(title=f"Plot of {graph_subject} vs Date"),
