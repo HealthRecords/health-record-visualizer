@@ -25,12 +25,21 @@ class VitalResponse(BaseModel):
     vitals: Dict[str, int] = Field(..., description="Map of vital names to counts")
 
 
+class ReferenceRange(BaseModel):
+    """Reference range for lab values"""
+    low: Optional[float] = Field(None, description="Lower bound of normal range")
+    high: Optional[float] = Field(None, description="Upper bound of normal range")
+    text: Optional[str] = Field(None, description="Human readable range description")
+    unit: Optional[str] = Field(None, description="Unit of measurement for range")
+
+
 class DataPoint(BaseModel):
     """Individual data point"""
     date: str = Field(..., description="Date in ISO format")
     value: float = Field(..., description="Measured value")
     unit: str = Field(..., description="Unit of measurement")
     name: str = Field(..., description="Name of the measurement")
+    reference_range: Optional[ReferenceRange] = Field(None, description="Reference range if available")
 
 
 class ObservationDataResponse(BaseModel):

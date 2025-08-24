@@ -27,7 +27,8 @@ from models import (
     PrefixResponse, CategoryResponse, VitalResponse, 
     ObservationDataResponse, ChartDataResponse,
     ConditionsResponse, MedicationsResponse, ProceduresResponse,
-    ConditionRecord, MedicationRecord, ProcedureRecord
+    ConditionRecord, MedicationRecord, ProcedureRecord,
+    ReferenceRange
 )
 
 app = FastAPI(
@@ -240,12 +241,23 @@ async def get_vital_data(
         # Convert to response format
         data_points = []
         for observation in ws:
+            # Convert reference range if available
+            ref_range = None
+            if observation.range:
+                ref_range = ReferenceRange(
+                    low=observation.range.low.value if observation.range.low else None,
+                    high=observation.range.high.value if observation.range.high else None,
+                    text=observation.range.text,
+                    unit=observation.range.low.unit if observation.range.low else None
+                )
+            
             for value in observation.data:
                 data_points.append({
                     "date": observation.date,
                     "value": value.value,
                     "unit": value.unit,
-                    "name": value.name
+                    "name": value.name,
+                    "reference_range": ref_range
                 })
         
         return ObservationDataResponse(
@@ -318,6 +330,15 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
                 "type": "line"
             })
         
+        # Check for reference range to add to chart
+        reference_range = None
+        if ws and ws[0].range and ws[0].range.low and ws[0].range.high:
+            reference_range = {
+                "low": ws[0].range.low.value,
+                "high": ws[0].range.high.value,
+                "text": ws[0].range.text
+            }
+        
         # Generate ECharts configuration
         chart_config = {
             "title": {
@@ -339,6 +360,27 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
             },
             "series": series
         }
+        
+        # Add reference range bands if available
+        if reference_range:
+            # Add reference range as a background area for each series
+            for i, s in enumerate(series):
+                series[i]["markArea"] = {
+                    "silent": True,
+                    "itemStyle": {
+                        "color": "rgba(173, 216, 230, 0.2)"  # Light blue background
+                    },
+                    "label": {
+                        "show": True if i == 0 else False,  # Only show label on first series
+                        "formatter": f"Normal Range\n{reference_range['text']}"
+                    },
+                    "data": [
+                        [
+                            {"yAxis": reference_range["low"]},
+                            {"yAxis": reference_range["high"]}
+                        ]
+                    ]
+                }
         
         return ChartDataResponse(
             title=display_vital,
