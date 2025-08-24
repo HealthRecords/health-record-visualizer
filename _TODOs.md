@@ -43,6 +43,8 @@ systolic (and everything else)
 1Need to include data from xml_reader.py into sparklines
 1. Sparklines don't need to be zero based, 
 2. Open the zip file directly, expanding takes space, and is likely slower,
+3. http://localhost:8000/observations/laboratory/MULTIPLE%20MYELOMA%20PROGNOSIS%20PANEL%2C%20FISH%2C%20REPORT
+   4. Doesn't work right now. I can't find the note in the results, yet. 
 
 # Tests
 Needs more tests.
