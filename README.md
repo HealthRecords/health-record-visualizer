@@ -238,7 +238,11 @@ This is a project, not a product. If you need more polished or supported solutio
 
 - [Fasten Health](https://www.fastenhealth.com/) - Open source personal health record
 - [Mere Medical](https://meremedical.co/) - Personal health data platform
+
+## Developer Resources
 - [OpenMHealth](https://www.openmhealth.org/) - Open mobile health toolkit
+- [Synthea](https://synthetichealth.github.io/synthea/)
+- [SmartHealthIt](https://docs.smarthealthit.org/)
 
 ## Data Format Notes
 
