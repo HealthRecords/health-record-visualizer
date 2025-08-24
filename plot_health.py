@@ -25,6 +25,20 @@ def _parse_dates_iso_z(dates: Sequence[str]) -> list[datetime]:
             raise ValueError(f"Unrecognized date format: {d!r}")
     return out
 
+def date_to_percentage(target_date_str: str, x_vals: list[str]) -> float:
+    """Convert a date string to percentage position in the data range"""
+    target_dt = datetime.fromisoformat(target_date_str)
+
+    # Get min/max dates from data
+    min_dt = datetime.fromisoformat(x_vals[0])
+    max_dt = datetime.fromisoformat(x_vals[-1])
+
+    # Calculate percentage
+    total_range = (max_dt - min_dt).total_seconds()
+    target_offset = (target_dt - min_dt).total_seconds()
+
+    percentage = (target_offset / total_range) * 100
+    return max(0, min(100, percentage))  # Clamp to 0-100
 
 def plot_echarts(
     dates: Sequence[str],
@@ -57,6 +71,8 @@ def plot_echarts(
     if min_date.date() == max_date.date():
         max_date = max_date + timedelta(days=1)
 
+    recent_date = "2021-09-07T00:00:00"
+    start_percent = date_to_percentage(recent_date, x_vals)
     line = (
         Line()  # width/height will be applied on the Grid container
         .add_xaxis(xaxis_data=x_vals)
@@ -74,8 +90,8 @@ def plot_echarts(
             tooltip_opts=opts.TooltipOpts(trigger="axis"),
             legend_opts=opts.LegendOpts(pos_top="2%"),
             datazoom_opts=[
-                opts.DataZoomOpts(type_="inside"),
-                opts.DataZoomOpts(type_="slider", pos_bottom="0"),
+                opts.DataZoomOpts(type_="inside", range_start=start_percent, range_end=100),
+                opts.DataZoomOpts(type_="slider", pos_bottom="0", range_start=5, range_end=50), # TODO I think the range values here are ignored.
             ],
             xaxis_opts=opts.AxisOpts(
                 type_="time",
