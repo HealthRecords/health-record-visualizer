@@ -21,7 +21,8 @@ Consolidating top-of-file TODOs I had been using, when this was one file. Now th
        -sys.maxsize < X < 50
  1. What about single valueQuantities that represent a range, with a "value" : 60,
         and a "comparator"  of ">". So far, I have only seen this is a single value, not a range. Skip for now.
-1. Not sure if do_vitals belongs ion health.py, or in health_lib.py. Probably needs to be refactored.
+1. Not sure if do_vitals belongs ion health.py, or in health_lib.py. Probably needs to be refactored
+1Need to include data from xml_reader.py into sparklines
 
 # Concepts
 1. How should I plot values (not ranges) that are expressed as "60" with a comparator of ">". 
