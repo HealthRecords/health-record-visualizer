@@ -32,6 +32,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from collections import Counter
 from math import log10
+from typing import Optional
+
 from health_lib import Observation
 
 
@@ -83,17 +85,21 @@ def find_display_names(file_name: str, pattern: list[str]):
 
 
 def get_test_results():
-    tags = set()
-    element_stack = []
+    """
+    Process Apple Health's exported export_cda.xml file. Looking for test results.
+    :return:
+    """
+    tags: set[str] = set()
+    element_stack: list[str] = []
     # file_name = "test_data/export_cda_fraction.xml"
-    file_name = "export/apple_health_export/export_cda.xml"
+    file_name: str = "export/apple_health_export/export_cda.xml"
     # file_name = "test_data/export_cda_1000.xml"
-    count = 0
-    count_sources = 0
-    none_count = 0
+    count: int = 0
+    count_sources: int = 0
+    none_count: int = 0
     for index, i in enumerate(ET.iterparse(file_name, events=("start", "end"))):
         event, element = i
-        tag = unicodedata.normalize("NFKD", trim(element.tag))
+        tag: str = unicodedata.normalize("NFKD", trim(element.tag))
         tags.add(tag)
         if event == "start":
             # print(tag, element.attrib, element_stack)
@@ -101,13 +107,14 @@ def get_test_results():
             # print(element, element.attrib, element.text)
             if find(element_stack, ["component", "observation", "code"]):
                 ob = Observation(name=element.attrib['displayName'])
-            elif find(element_stack, ["text", "value"]):
+            elif find(element_stack, ["component", "observation","text", "value"]):
                 ob.value = element.text
-            elif tag == "unit":
+            elif find(element_stack, ["component", "observation","text", "unit"]):  # TODO Shouldn't this have a find() call to make sure we don't get lots of units?
                 ob.unit = element.text
                 count += 1
                 print(F"{index:7}: {count_sources}: {ob}")
         elif event == "end":
+            # Some elements/attributes are not set while processing the start tag, so we have to pick them up here.
             if find(element_stack, ["text", "sourceName"]):
                 count_sources += 1
                 if element.text is None:
@@ -116,9 +123,10 @@ def get_test_results():
                     ob.sourceName = "None"
                 else:
                     ob.sourceName = unicodedata.normalize("NFKD", element.text)
+                print(F"{index:7}: {count_sources}: {ob} END")
             element_stack.pop()
-    print(F"Found {count} observations.")
-    print(F"None count {none_count}")
+    print(F"Found {count:,} observations.")
+    print(F"None count {none_count:,}")
     print_tags: bool = False
     if print_tags:
         print("All Tags:")
@@ -129,10 +137,14 @@ def get_test_results():
 def get_all_test_types():
     print("This may take a few minutes...")
     names, _ = find_display_names("export/apple_health_export/export_cda.xml", ["component", "observation", "code"])
+    return names
+def print_all_test_types():
+    names = get_all_test_types()
     max_count_name = max(names, key=names.get)
     max_count = names[max_count_name]
 
     lmc = int(log10(max_count) * (1 +  1 / 3) + 1)  ## Allow for commans
+
     print(max_count, lmc)
     for index, _ in enumerate(names.most_common()):
         name, count = _
@@ -146,6 +158,6 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--list", action="store_true", help="List all observations. SLOW! (minutes)")
     args = parser.parse_args()
     if args.list:
-        get_all_test_types()
+        print_all_test_types()
     else:
         get_test_results()
