@@ -15,23 +15,9 @@ import argparse
 from datetime import datetime
 import csv
 
-# TODO Split this file into UI code, and library code. We already have text_ui, and xml_reader which use this file.
-#       Should be able to pass in an output function (print, plot with matplotlib, generate html page, etc.
-# TODO print_condition and print_medicines should be generalized and combined.
-# TODO Do we want to have an option to process multiple or all stats in one run?
-# TODO Should be able to graph anything with a value quantity and a date. This is only observations, at least
-#      in my data. Need to handle string values for Observations
-# TODO When getting multiple stats, I reread ALL the observation files for each stat. Optimize.
-# TODO I don't currently handle the difference between < and <= on reference ranges. Is there really a difference?
-# TODO New format for valueQuantity, see ValueQuantity doc string
-# TODO Some data appears to be missing from my download (PSA).
-# TODO Check single ended string referenceRanges, like "<50". How well does that graph? I treat this as
-#       -sys.maxsize < X < 50
-# TODO Not sure if do_vitals belongs here, or in health_lib or needs to be refactored.
-# TODO Where does 'plot' belong? A third module, which s pluggable
 
 from health_lib import StatInfo, Observation
-from health_lib import  extract_all_values, yield_observation_files
+from health_lib import extract_all_values, yield_observation_files
 from health_lib import list_categories, list_vitals, list_prefixes
 from plot_health import plot
 
@@ -39,7 +25,7 @@ from plot_health import plot
 def print_conditions(cd: Path, csv_format: bool, match: str) -> NoReturn:
     path = cd / match
     conditions = []
-    for p in glob.glob(str(path)):
+    for p in glob.glob(str(path)):  # TODO all globbing and opening should be in healthlib. print_conditions should call a method in helth_lib to get data.
         with open(p) as f:
             condition = json.load(f)
             conditions.append(
@@ -218,8 +204,8 @@ def parse_args():
     return args, active, flags
 
 
-def do_vital(condition_path: Path, vital: str, after: str, print_data: bool, vplot: bool, csv_format: bool,
-             *, category_name) -> NoReturn:
+def do_vital(condition_path: Path, vital: str, after: str, *, print_data: bool, vplot: bool, csv_format: bool,
+            category_name) -> NoReturn:
     if not print_data and not vplot:
         print("You need to select at least one of --plot or --print with --stat")
         return
@@ -289,7 +275,8 @@ def go():
         print_medicines(condition_path, args.csv_format, "MedicationRequest*.json", include_inactive)
 
     if args.stat:
-        do_vital(condition_path, args.stat, args.after, args.print, args.plot, args.csv_format, category_name="Vital Signs")
+        do_vital(condition_path, args.stat, args.after, print_data=args.print,
+                 vplot=args.plot, csv_format=args.csv_format, category_name="Vital Signs")
 
     if args.list_vitals:
         print_vitals(observation_files=yield_observation_files(condition_path), category="Vital Signs")
@@ -300,8 +287,8 @@ def go():
         if len(param) == 1:
             print_vitals(observation_files=yield_observation_files(condition_path), category=param[0])
         elif len(param) == 2:
-            do_vital(condition_path, param[1], args.after, args.print, args.plot, args.csv_format,
-                     category_name=param[0])
+            do_vital(condition_path, param[1], args.after, print_data=args.print, vplot=args.plot,
+                     csv_format=args.csv_format, category_name=param[0])
         else:
             print("Invalid format: use -g category:code     like '-g \"Vital Signs:Blood Pressure\"")
 
