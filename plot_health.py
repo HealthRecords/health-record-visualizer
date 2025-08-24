@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from matplotlib import dates as mdates, pyplot as plt
 
 
-def plot(dates, values: list[float], values2: list[float], graph_subject, data_name_1, data_name_2) -> None:
+def plot_mat(dates, values: list[float], values2: list[float], graph_subject, data_name_1, data_name_2) -> None:
     label0 = data_name_1 if data_name_1 else ""
     label1 = data_name_2 if data_name_2 else ""
 
@@ -53,3 +53,20 @@ def plot(dates, values: list[float], values2: list[float], graph_subject, data_n
     plt.ylim(0, max(values))
 
     plt.show()
+
+def plot_pygal(dates, values: list[float], values2: list[float], graph_subject, data_name_1, data_name_2) -> None:
+    import pygal  # First import pygal
+    chart_max = max(max(values), max(values2))
+    bar_chart = pygal.Line(range=(0, chart_max), title=graph_subject)  # Then create a bar graph object
+    bar_chart.add(data_name_1, values)  # Add some values
+    if values2 is not None:
+        bar_chart.add(data_name_2, values2)  # Add some values
+
+    bar_chart.render_to_file('plot_with_pygal.svg')
+
+def plot(dates, values: list[float], values2: list[float], graph_subject, data_name_1, data_name_2) -> None:
+    MAT = False
+    if MAT:
+        plot_mat(dates, values, values2, graph_subject, data_name_1, data_name_2)
+    else:
+        plot_pygal(dates, values, values2, graph_subject, data_name_1, data_name_2)
