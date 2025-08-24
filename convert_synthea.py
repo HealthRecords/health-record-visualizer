@@ -36,6 +36,32 @@ def extract_resources_from_bundle(bundle_path: Path) -> Dict[str, List[Dict]]:
     return resources_by_type
 
 
+def normalize_fhir_to_apple_format(resource: Dict) -> Dict:
+    """Convert Synthea FHIR format to Apple Health export format"""
+    
+    # Handle category field in Observations
+    if resource.get('resourceType') == 'Observation' and 'category' in resource:
+        categories = resource['category']
+        if isinstance(categories, list):
+            normalized_categories = []
+            for cat in categories:
+                if isinstance(cat, dict) and 'coding' in cat and cat['coding']:
+                    # Convert {"coding": [{"display": "Laboratory"}]} to {"text": "Laboratory"}
+                    display = cat['coding'][0].get('display', 'Unknown')
+                    # Normalize common categories to match expected format
+                    if display.lower() == 'vital signs':
+                        display = 'Vital Signs'
+                    normalized_categories.append({"text": display})
+                elif isinstance(cat, dict) and 'text' in cat:
+                    # Already in Apple format
+                    normalized_categories.append(cat)
+                else:
+                    normalized_categories.append({"text": "Unknown"})
+            resource['category'] = normalized_categories
+    
+    return resource
+
+
 def save_individual_resources(resources_by_type: Dict[str, List[Dict]], output_dir: Path):
     """Save resources as individual files matching Apple Health format."""
     # Create the expected directory structure: output_dir/clinical-records/
@@ -47,8 +73,11 @@ def save_individual_resources(resources_by_type: Dict[str, List[Dict]], output_d
         print(f"Processing {len(resources)} {resource_type} resources...")
         
         for resource in resources:
+            # Normalize FHIR format to Apple Health format
+            normalized_resource = normalize_fhir_to_apple_format(resource)
+            
             # Use existing ID if available, otherwise generate one
-            resource_id = resource.get('id', str(uuid.uuid4()))
+            resource_id = normalized_resource.get('id', str(uuid.uuid4()))
             
             # Create filename matching Apple Health pattern: ResourceType-UUID.json
             filename = f"{resource_type}-{resource_id}.json"
@@ -56,7 +85,7 @@ def save_individual_resources(resources_by_type: Dict[str, List[Dict]], output_d
             
             # Save individual resource
             with open(file_path, 'w') as f:
-                json.dump(resource, f, indent=2)
+                json.dump(normalized_resource, f, indent=2)
             
             total_files += 1
     

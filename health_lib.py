@@ -388,29 +388,16 @@ def list_categories(dir_path: Path, only_first, *, one_prefix) -> (list[tuple], 
             if isinstance(cat_top, str):
                 counter[cat_top] += 0.1
             elif isinstance(cat_top, dict):
-                # Handle both Apple Health format and FHIR standard format
-                if 'text' in cat_top:
-                    counter[cat_top['text']] += 1
-                elif 'coding' in cat_top and cat_top['coding']:
-                    # Use display from first coding entry (Synthea/FHIR format)
-                    display = cat_top['coding'][0].get('display', 'Unknown')
-                    counter[display] += 1
-                else:
-                    counter['Unknown'] += 1
+                assert 'text' in cat_top
+                assert isinstance(cat_top['text'], str)
+                counter[cat_top['text']] += 1
             elif isinstance(cat_top, list):
                 for ci in cat_top:
                     if isinstance(ci, str):
                         counter[ci] += 1
                     elif isinstance(ci, dict):
-                        # Handle both Apple Health format and FHIR standard format
-                        if 'text' in ci:
-                            counter[ci['text']] += 1
-                        elif 'coding' in ci and ci['coding']:
-                            # Use display from first coding entry (Synthea/FHIR format)
-                            display = ci['coding'][0].get('display', 'Unknown')
-                            counter[display] += 1
-                        else:
-                            counter['Unknown'] += 1
+                        assert 'text' in ci
+                        counter[ci['text']] += 1
                     if only_first:
                         break
             else:
