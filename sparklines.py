@@ -9,6 +9,7 @@ you can use a fixed value for the upper and lower limit of the value.True
 Need to figure out how to scale each sparkline separately
 could also maybe use pygal, which sounds cool. But let's use matplotlib for now.
 
+
 TODO: Need to match the date range across all sparklines, if I'm going to line them up.
 
 TODO: I need normal range for every test we want to plot (I guess it's not required, just nice to have).
@@ -26,16 +27,17 @@ from typing import TextIO
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 
-import plot_health
-from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, print_vitals, list_vitals
+from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, list_vitals
 
 
-def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min, graph_y_max, normal_min, normal_max):
-    # We assumed that normal would be horizontal lines. We have found some tests that have a referenceRange
+def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min,
+              graph_y_max, normal_min, normal_max, fig_size_x: float = 4, fig_size_y: float = 1):
+    # TODO We assumed that normal ranges would be bounded by horizontal lines.
+    # We have found some tests that have a referenceRange
     # for some values, and not for others. I think there is a way to shade between curves. Try that.
     data_x = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in data_x_str]
 
-    fig, axes = plt.subplots(1, 1, figsize=(4, 1))
+    fig, axes = plt.subplots(1, 1, figsize=(fig_size_x, fig_size_y))
     # axes.axis('off')
     if normal_max is not None:
         assert normal_min is not None
@@ -44,10 +46,11 @@ def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min, graph_y_m
         normal_max = graph_y_max
     axes.set_ylim([graph_y_min, max(graph_y_max, normal_max)])
     if len(data_x) == 1:
+        # TODO combine with plot() in plot_health.py
         # Single points are invisible, so make it more obvious.
-        plot_health.plot(data_x, data_y, 'o', markeredgecolor ='r')
+        axes.plot(data_x, data_y, 'o', markeredgecolor='r')
     else:
-        plot_health.plot(data_x, data_y, )
+        axes.plot(data_x, data_y)
 
     # Calculate major ticks for x-axis
     years = mdates.YearLocator()
@@ -60,12 +63,13 @@ def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min, graph_y_m
     plt.close()
     return '<img src="data:image/png;base64,{}"/>'.format(base64.b64encode(img.read()).decode())
 
-def sparklines(incoming: list[list[Observation]]) -> list[tuple[str, str]]:
+def sparklines(incoming: list[list[Observation]]) -> list[tuple[str, str, int]]:
     """
     Generate a list of sparklines.
     :param incoming: a list of lists of Observations.
-    :return: a list of (image tag, stat name) tuples
+    :return: a list of (image tag, stat name, number of Observations) tuples
     """
+
     outgoing = []
     for index in range(0, len(incoming)):
         one_ob_list = incoming[index]
@@ -78,13 +82,20 @@ def sparklines(incoming: list[list[Observation]]) -> list[tuple[str, str]]:
             check_for_messy_data = False
             nn = [x.range for x in one_ob_list]
             if None in nn:
-                print("We have a set of observations with different range limit values for the same teste. "
-                      "This is in the data, not a bug in code. Need to figure out what to do with it.", one_ob_list[0].filename)
+                print("We have a set of observations with different range limit values for the same test. "
+                      "This is in the data, not a bug in code. Need to figure out what to do with it.",
+                      one_ob_list[0].filename)
                 if check_for_messy_data:  # TODO
                     range_ = {x.range.low.value for x in one_ob_list}
                     assert len(range_) == 1
             if not hasattr(one_ob_list[0].range, "low") or not hasattr(one_ob_list[0].range.low, "value"):
-                print("Missing low or value in the data:", one_ob_list[0].filename)
+                if not hasattr(one_ob_list[0].range, "low"):
+                    if hasattr(one_ob_list[0].range, "comparator"):
+                        # TODO Figure out what to do for graphs that assume a single value. This is a range, like "<60"
+                        print("No support for comparators at this time.", range, one_ob_list[0].filename)
+                else:
+                    # TODO This is normal in some conditions. Resolve how to handle
+                    print("Missing low in the range:", range, one_ob_list[0].filename)
                 normal_min = None
                 normal_max = None
             else:
@@ -100,7 +111,8 @@ def sparklines(incoming: list[list[Observation]]) -> list[tuple[str, str]]:
             baseline = min(data_y)
         graph_y_min = 0
         graph_y_max = max(data_y)
-        img_info = sparkline(data_x, data_y, graph_y_min, graph_y_max, normal_min, normal_max)
+        img_info = sparkline(data_x, data_y, graph_y_min, graph_y_max,
+                             normal_min, normal_max, 3, 0.25)
         outgoing.append((img_info, one_ob_list[0].name, len(one_ob_list)))
 
     return outgoing
