@@ -125,11 +125,13 @@ def print_values(ws: list[Observation], csv_format: bool) -> NoReturn:
 
 def print_vitals(observation_files: Iterable[str], category: str) -> NoReturn:
     vitals = list_vitals(observation_files, category)
-    print(F"Files that have a category of '{category}' were found in files. These codes were found in them.")
-    v_sorted = sorted(vitals, key=lambda x: vitals[x], reverse=True)
-    for v in v_sorted:
-        print(F"{vitals[v]:6} {v}")
-
+    if vitals:
+        print("Entries that have a category of '{category}' were found.")
+        v_sorted = sorted(vitals, key=lambda x: vitals[x], reverse=True)
+        for v in v_sorted:
+            print(F"{vitals[v]:6} {v}")
+    else:
+        print("No vital signs were found in files.")
 
 def print_prefixes(dir_path: Path) -> NoReturn:
     extensions = list_prefixes(dir_path)
@@ -253,7 +255,12 @@ def go():
     args, active, flags = parse_args()
     base = Path("export/apple_health_export")
     base = Path(args.source)
+    print("Base path to exported data is ", base)
     condition_path = base / "clinical-records"
+    assert base.exists()
+    assert base.is_dir()
+    assert condition_path.exists()
+    assert condition_path.is_dir()
 
     if not any(active):
         print(F"Please select one of {flags} to get some output.")
