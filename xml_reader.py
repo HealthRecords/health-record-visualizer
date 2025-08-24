@@ -31,8 +31,9 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from collections import Counter
+from datetime import datetime
 from math import log10
-from typing import Optional
+from typing import Optional, Generator
 
 from health_lib import Observation, ValueQuantity
 
@@ -84,7 +85,7 @@ def find_display_names(file_name: str, pattern: list[str]):
     return display_names, element_stack  # Only returning element_stack for test.
 
 
-def get_test_results():
+def get_test_results(display_name_wanted: Optional[str]) -> Generator[Observation, None, None]:
     """
     Process Apple Health's exported export_cda.xml file. Looking for test results.
     :return:
@@ -107,7 +108,9 @@ def get_test_results():
             element_stack.append(tag)
             # print(element, element.attrib, element.text)
             if find(element_stack, ["component", "observation", "code"]):
-                ob = Observation(name=element.attrib['displayName'])
+                dn = element.attrib['displayName']
+                if display_name_wanted is not None and dn == display_name_wanted:
+                    ob = Observation(name=element.attrib['displayName'])
         elif event == "end":
             # Some elements/attributes are not set while processing the start tag, so we have to pick them up here.
             # if find(element_stack, ["component", "observation", "text", "sourceName"]):
@@ -126,19 +129,27 @@ def get_test_results():
                 value = float(element.text)
                 # vq = ValueQuantity(float(element.text), unit, ob.name)
                 # ob.value = [vq]
+
+            if find(element_stack, ["component", "observation", "effectiveTime", "low"]):  # Just use "low" for now.
+                timestamp = element.attrib['value']
+                dt_obj = datetime.strptime(timestamp, '%Y%m%d%H%M%S%z')
+                dt_string = datetime.strftime(dt_obj, '%Y-%m-%dT%H:%M:%SZ')
+
             # Last tag we see, while collecting an Observation.
             if find(element_stack, ["component", "observation"]):
-                assert ob is not None
-                assert value is not None
-                assert unit is not None
+                if ob is not None:
+                    assert value is not None
+                    assert unit is not None
 
-                vq = ValueQuantity(value, unit, ob.name)
-                ob.data = [vq]
-                ob.filename = file_name
-                yield ob
+                    vq = ValueQuantity(value, unit, ob.name)
+                    ob.data = [vq]
+                    ob.filename = file_name
+                    ob.date = dt_string
+                    yield ob
                 ob = None
                 value = None
                 unit = None
+                dt_string = None
 
             element_stack.pop()
 
@@ -156,7 +167,7 @@ def print_test_results():
     #         print(tag)
 
 
-def get_all_test_types():
+def get_all_test_types() -> Counter[str]:
     print("This may take a few minutes...")
     names, _ = find_display_names("export/apple_health_export/export_cda.xml", ["component", "observation", "code"])
     return names

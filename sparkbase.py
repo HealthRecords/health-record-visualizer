@@ -32,6 +32,8 @@ import matplotlib.dates as mdates
 from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, list_vitals
 from plot_health import plot_pygal
 import plot_health
+from xml_reader import get_test_results, get_all_test_types
+
 
 def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min,
               graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
@@ -52,6 +54,9 @@ def sparkline_mat(data_x_str: list[str], data_y: list[float], graph_y_min,
     # TODO We assumed that normal ranges would be bounded by horizontal lines.
     #      We have found some tests that have a referenceRange
     #      for some values, and not for others. I think there is a way to shade between curves. Try that.
+    for date in data_x_str:
+        if date is None:
+            print("XYZ")
     data_x = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in data_x_str]
 
     fig, axes = plt.subplots(1, 1, figsize=(fig_size_x, fig_size_y))
@@ -180,7 +185,9 @@ def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
         print(F"<h1>{title}</H1>", file=f)
     sparks = sparklines(incoming)
     spark_len = len(sparks)
-    print(F"""<div style="display: grid;grid-template-columns: 1fr 8fr; grid-template-rows: repeat({spark_len}, 5em);">""", file=f)
+    print(
+        F"""<div style="display: grid;grid-template-columns: 1fr 8fr; grid-template-rows: repeat({spark_len}, 5em);">"""
+        , file=f)
     for imgtag, stat_name, count in sparks:
         print("""<div class="grid-item">""", file=f)
         print(F"""{stat_name}({count})""", file=f)
@@ -250,6 +257,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Create an html file containing sparklines")
     parser.add_argument("--all", action=argparse.BooleanOptionalAction, help="Graph all lab and vital signs")
+    parser.add_argument("--apple", action=argparse.BooleanOptionalAction,
+                        help="Source can be Apple Health data, or clinical data (default). ", default=False)
     parser.add_argument("--file", action='store',
                         help="Filename to write the html page to", default="output/sparkbase.html")
     parser.add_argument("--cat", action='store',
@@ -258,7 +267,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--vitals", action=argparse.BooleanOptionalAction,
                         help='Shortcut for --cat "Vital Signs"')
     parser.add_argument("-l", "--labs", action=argparse.BooleanOptionalAction,
-                        help='Shortcut for --cat "Labs". This can take a long time (minutes)')
+                        help='Shortcut for --cat "Labs". This can take a while.')
 
     args = parser.parse_args()
     if args.vitals:
@@ -267,7 +276,28 @@ if __name__ == "__main__":
         cat = "Lab"
     else:
         cat = args.cat
-    vs = list_vitals(observation_files=yield_observation_files(condition_path), category=cat)
-    vsi: list[StatInfo] = [StatInfo(cat, name) for name in vs]
-    vitals(vsi, graph_title=cat)
+    if args.apple:
+        if False:
+            rc = get_all_test_types()
+            for x in rc:
+                print(x)
+            sys.exit(0)
+        else:  # plot
+            cat = "apple"
+            display_name = "Oxygen saturation"
+            assert cat
+            observations = get_test_results(display_name)
+            stats_to_graph = [[ob for ob in observations]]
+            sparks(stats_to_graph, head_styles=[styles], title="Hello, Neighbor")
+            sys.exit(0)
+
+    else:
+        vs = list_vitals(observation_files=yield_observation_files(condition_path), category=cat)
+        if args.list:
+            for v in vs:
+                print(v)
+            sys.exit(0)
+        else:
+            vsi: list[StatInfo] = [StatInfo(cat, name) for name in vs]
+            vitals(vsi, graph_title=cat)
 
