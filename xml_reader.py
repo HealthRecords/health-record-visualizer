@@ -113,13 +113,13 @@ def get_test_results(display_name_wanted: Optional[str]) -> Generator[Observatio
                     ob = Observation(name=element.attrib['displayName'])
         elif event == "end":
             # Some elements/attributes are not set while processing the start tag, so we have to pick them up here.
-            # if find(element_stack, ["component", "observation", "text", "sourceName"]):
-            #     if element.text is None:
-            #         # print("None")
-            #         none_count += 1
-            #         ob.Name = "NoneName"
-            #     else:
-            #         ob.name = unicodedata.normalize("NFKD", element.text)
+            if find(element_stack, ["component", "observation", "text", "sourceName"]):
+                if element.text is None:
+                    # print("None")
+                    none_count += 1
+                    source_name = "NoneName"
+                else:
+                    source_name = unicodedata.normalize("NFKD", element.text)
 
             if find(element_stack, ["component", "observation", "text", "unit"]):
                 unit = element.text
@@ -145,6 +145,7 @@ def get_test_results(display_name_wanted: Optional[str]) -> Generator[Observatio
                     ob.data = [vq]
                     ob.filename = file_name
                     ob.date = dt_string
+                    ob.source_name = source_name
                     yield ob
                 ob = None
                 value = None
