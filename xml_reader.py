@@ -108,8 +108,6 @@ def get_test_results():
             # print(element, element.attrib, element.text)
             if find(element_stack, ["component", "observation", "code"]):
                 ob = Observation(name=element.attrib['displayName'])
-                count_sources += 1
-                # print(F"{index:8}: {count_sources}: {ob}")
         elif event == "end":
             # Some elements/attributes are not set while processing the start tag, so we have to pick them up here.
             # if find(element_stack, ["component", "observation", "text", "sourceName"]):
@@ -137,19 +135,25 @@ def get_test_results():
                 vq = ValueQuantity(value, unit, ob.name)
                 ob.data = [vq]
                 ob.filename = file_name
-                print(F"{index:8}: {count_sources}: {ob} END")
+                yield ob
                 ob = None
                 value = None
                 unit = None
 
             element_stack.pop()
+
+def print_test_results():
+    count = 0
+    for index, obs in enumerate(get_test_results()):
+        print(F"{index:8}: {obs} END")
+        count += 1
+
     print(F"Found {count:,} observations.")
-    print(F"None count {none_count:,}")
-    print_tags: bool = False
-    if print_tags:
-        print("All Tags:")
-        for tag in sorted(tags):
-            print(tag)
+    # print_tags: bool = False # Look into RETURN values from generator functions
+    # if print_tags:
+    #     print("All Tags:")
+    #     for tag in sorted(tags):
+    #         print(tag)
 
 
 def get_all_test_types():
@@ -178,4 +182,4 @@ if __name__ == "__main__":
     if args.list:
         print_all_test_types()
     else:
-        get_test_results()
+        print_test_results()
