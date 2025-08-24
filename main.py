@@ -684,6 +684,117 @@ async def get_diagnosticreports():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading diagnostic reports: {str(e)}")
 
+# Document Reference handler (was mapped but missing)
+@app.get("/documents", response_class=HTMLResponse)
+async def documents_page(request: Request):
+    """Document references page"""
+    return templates.TemplateResponse(
+        "generic_data.html", 
+        {
+            "request": request,
+            "title": "Document References",
+            "resource_type": "DocumentReference",
+            "api_endpoint": "/api/documents",
+            "breadcrumb": [{"name": "Home", "url": "/"}, {"name": "Document References", "url": "/documents"}]
+        }
+    )
+
+@app.get("/api/documents")
+async def get_documents():
+    """Get all document references data"""
+    try:
+        _, clinical_path = get_health_paths()
+        pattern = clinical_path / "DocumentReference*.json"
+        records = []
+        
+        for file_path in glob.glob(str(pattern)):
+            with open(file_path) as f:
+                record = json.load(f)
+                
+                records.append({
+                    "resource_type": record.get('resourceType', 'DocumentReference'),
+                    "id": record.get('id', 'Unknown'),
+                    "date": record.get('date', 'Unknown'),
+                    "status": record.get('docStatus', 'Unknown'),
+                    "text": record.get('description') or record.get('type', {}).get('text', 'Document'),
+                    "raw_data": record
+                })
+        
+        # Sort by date (most recent first)
+        records.sort(key=lambda x: x.get('date', ''), reverse=True)
+        
+        return {"records": records, "count": len(records)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading documents: {str(e)}")
+
+# Generic route handler for unmapped resource types
+@app.get("/data/{resource_type}", response_class=HTMLResponse)
+async def generic_data_page(request: Request, resource_type: str):
+    """Generic data page for any FHIR resource type"""
+    try:
+        # Capitalize first letter to match FHIR naming convention
+        fhir_type = resource_type.capitalize()
+        
+        # Check if files exist for this resource type
+        _, clinical_path = get_health_paths()
+        pattern = clinical_path / f"{fhir_type}*.json"
+        files = list(glob.glob(str(pattern)))
+        
+        if not files:
+            raise HTTPException(status_code=404, detail=f"No {fhir_type} data found")
+        
+        return templates.TemplateResponse(
+            "generic_data.html",
+            {
+                "request": request,
+                "title": f"{fhir_type} Records",
+                "resource_type": fhir_type,
+                "api_endpoint": f"/api/data/{resource_type}",
+                "count": len(files),
+                "breadcrumb": [{"name": "Home", "url": "/"}, {"name": f"{fhir_type} Records", "url": f"/data/{resource_type}"}]
+            }
+        )
+    except Exception as e:
+        if "No " in str(e) and " data found" in str(e):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error loading {resource_type}: {str(e)}")
+
+@app.get("/api/data/{resource_type}")
+async def get_generic_data(resource_type: str):
+    """Generic API endpoint for any FHIR resource type"""
+    try:
+        # Capitalize first letter to match FHIR naming convention
+        fhir_type = resource_type.capitalize()
+        
+        _, clinical_path = get_health_paths()
+        pattern = clinical_path / f"{fhir_type}*.json"
+        records = []
+        
+        for file_path in glob.glob(str(pattern)):
+            with open(file_path) as f:
+                record = json.load(f)
+                
+                # Extract common fields that most FHIR resources have
+                records.append({
+                    "resource_type": record.get('resourceType', fhir_type),
+                    "id": record.get('id', 'Unknown'),
+                    "date": record.get('recordedDate') or record.get('authoredOn') or record.get('effectiveDateTime') or record.get('performedDateTime') or 'Unknown',
+                    "status": record.get('status') or record.get('clinicalStatus', {}).get('coding', [{}])[0].get('code') if record.get('clinicalStatus') else 'Unknown',
+                    "text": (
+                        record.get('code', {}).get('text') or 
+                        record.get('medicationCodeableConcept', {}).get('text') or
+                        record.get('category', [{}])[0].get('text') if record.get('category') else 'Unknown'
+                    ),
+                    "raw_data": record  # Include full record for detailed view
+                })
+        
+        # Sort by date (most recent first) 
+        records.sort(key=lambda x: x.get('date', ''), reverse=True)
+        
+        return {"records": records, "count": len(records)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading {resource_type}: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
