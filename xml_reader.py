@@ -126,7 +126,7 @@ def find_display_names(file_name: str, patterns: list[Pattern]):
     return sorted(display_names), element_stack  # Only returning element_stack for test.
 
 
-def get_test_results(display_name_wanted: Optional[str]) -> Generator[Observation, None, None]:
+def get_test_results(display_name_wanted: Optional[str], file_name) -> Generator[Observation, None, None]:
     """
     Process Apple Health's exported export_cda.xml file. Looking for test results.
     :return:
@@ -134,7 +134,6 @@ def get_test_results(display_name_wanted: Optional[str]) -> Generator[Observatio
     tags: set[str] = set()
     element_stack: list[str] = []
     # file_name = "test_data/export_cda_fraction.xml"
-    file_name: str = "export/apple_health_export/export_cda.xml"
     # file_name = "test_data/export_cda_1000.xml"
     count: int = 0
     count_sources: int = 0
@@ -211,12 +210,12 @@ def print_test_results():
     #         print(tag)
 
 
-def get_all_test_types() -> Counter[str]:
+def get_all_test_types(filename="export/apple_health_export/export_cda.xml") -> Counter[str]:
     print("This may take a few minutes...")
     pn = Pattern(["component", "observation", "code"], "displayName")
     ps = Pattern(["component", "observation", "text", "sourceName"], None)
     patterns = [pn, ps]
-    names, _ = find_display_names("export/apple_health_export/export_cda.xml", patterns)
+    names, _ = find_display_names(filename, patterns)
     return names
 
 def print_all_test_types():
