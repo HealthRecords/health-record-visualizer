@@ -36,10 +36,12 @@ class ReferenceRange(BaseModel):
 class DataPoint(BaseModel):
     """Individual data point"""
     date: str = Field(..., description="Date in ISO format")
-    value: float = Field(..., description="Measured value")
-    unit: str = Field(..., description="Unit of measurement")
+    value: Optional[float] = Field(None, description="Measured numeric value")
+    text_value: Optional[str] = Field(None, description="Text result for qualitative tests")
+    unit: Optional[str] = Field(None, description="Unit of measurement")
     name: str = Field(..., description="Name of the measurement")
     reference_range: Optional[ReferenceRange] = Field(None, description="Reference range if available")
+    is_text: bool = Field(default=False, description="Whether this is a text-based result")
 
 
 class ObservationDataResponse(BaseModel):

@@ -20,7 +20,8 @@ import csv
 import config
 from health_lib import (
     list_prefixes, list_categories, list_vitals, 
-    yield_observation_files, extract_all_values, StatInfo
+    yield_observation_files, extract_all_values, StatInfo,
+    ValueString
 )
 from health import print_conditions, print_medicines, print_procedures
 from models import (
@@ -252,13 +253,27 @@ async def get_vital_data(
                 )
             
             for value in observation.data:
-                data_points.append({
-                    "date": observation.date,
-                    "value": value.value,
-                    "unit": value.unit,
-                    "name": value.name,
-                    "reference_range": ref_range
-                })
+                # Check if this is a numeric or text value
+                if hasattr(value, 'unit'):  # ValueQuantity
+                    data_points.append({
+                        "date": observation.date,
+                        "value": value.value,
+                        "text_value": None,
+                        "unit": value.unit,
+                        "name": value.name,
+                        "reference_range": ref_range,
+                        "is_text": False
+                    })
+                else:  # ValueString
+                    data_points.append({
+                        "date": observation.date,
+                        "value": None,
+                        "text_value": value.value,
+                        "unit": None,
+                        "name": value.name,
+                        "reference_range": None,  # Text values don't have reference ranges
+                        "is_text": True
+                    })
         
         return ObservationDataResponse(
             category=display_category,
@@ -295,6 +310,37 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
                 dates=[],
                 series=[],
                 chart_config={}
+            )
+        
+        # Check if this is a text-based observation that can't be charted
+        first = ws[0]
+        if first.data and not hasattr(first.data[0], 'unit'):
+            # This is a text-based observation, return empty chart config
+            return ChartDataResponse(
+                title=display_vital,
+                dates=[],
+                series=[],
+                chart_config={
+                    "title": {
+                        "text": display_vital,
+                        "subtext": "Text-based results cannot be charted. View data table below for results.",
+                        "left": "center",
+                        "top": "middle",
+                        "textStyle": {
+                            "fontSize": 18
+                        },
+                        "subtextStyle": {
+                            "fontSize": 14,
+                            "color": "#666"
+                        }
+                    },
+                    "xAxis": {
+                        "show": False
+                    },
+                    "yAxis": {
+                        "show": False
+                    }
+                }
             )
         
         # Sort observations by date (oldest first) for proper chart timeline

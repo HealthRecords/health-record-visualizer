@@ -60,6 +60,17 @@ class ValueQuantity:
     name: str
 
 
+@dataclass
+class ValueString:
+    """
+    Represents a "valueString", from an Observation. Used for lab results that contain text rather than numeric values.
+    
+    For example, Gram stain results, culture results, etc.
+    """
+    value: str
+    name: str
+
+
 reference_range_pattern = re.compile(r"[<=>]+")
 @dataclass
 class ReferenceRange:
@@ -143,7 +154,7 @@ class Observation:
     """
     name: str
     date: str = None
-    data: list[ValueQuantity] = None
+    data: list[ValueQuantity | ValueString] = None
     range: Optional[ReferenceRange] = None
     filename: Path = None
     # Some tests have multiple sources.
@@ -243,17 +254,15 @@ def extract_value_helper(*, filename: str, condition: dict, stat_info) -> Option
                 reference_range = None
             return Observation(name=t, date=d, data=sub_values)
         elif "valueString" in condition:
-            # TODO Do we even need to check this? I see only two that could possibly graph, and both are ranges:
-            #      "    >60", and "1-2", maybe add a verbose option to print these. For now, they don't matter.
-            verbose = False
-            if verbose:
-            # val = condition["valueString"]
-            # global value_strings_seen
-            # if val not in value_strings_seen:
-            #     print(F"We don't handle 'valueString' yet: value is '{val}'")
-            #     value_strings_seen.add(val)
-                pass
-            return None
+            # Handle text-based lab results (e.g., Gram stain, culture results)
+            val = condition["valueString"]
+            t = condition["code"]["text"]
+            d = condition["effectiveDateTime"]
+            
+            # Create a ValueString object for text results
+            vs = ValueString(value=val, name=t)
+            
+            return Observation(name=t, date=d, data=[vs])
         else:
             print(F"*** No value found in {filename} ***")
     return None
