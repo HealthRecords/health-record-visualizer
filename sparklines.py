@@ -32,7 +32,7 @@ from plot_health import plot_pygal
 
 def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min,
               graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
-    use_matlib=False
+    use_matlib = False
     if use_matlib:
         return sparkline_mat(data_x_str, data_y, graph_y_min, graph_y_max, normal_min, normal_max, fig_size_x, fig_size_y)
     else:
@@ -100,7 +100,7 @@ def sparkline_pygal(data_x_str: list[str], data_y: list[float], graph_y_min,
     with open("temp.html", "w") as f:
         f.write(html)
 
-    return F"""<img src="{chart_bytes}">"""
+    return F"""<img alt="health data chart" src="{chart_bytes}">"""
     # return F'<img src="data:image/svg;base64,{chart_bytes}'
 
 
@@ -168,8 +168,9 @@ def html_page(f: TextIO, incoming):
     """
     print("""<!DOCTYPE html>
         <html lang="en">
-            <head title="Sparklines">
-                <meta charset="utf-8"/>
+            <head>
+                <meta charset="utf-8">
+                <title>Health Charts</title>
             </head>
             <body>""", file=f)
     print("<h1>Sparklines</H1>", file=f)
@@ -180,11 +181,11 @@ def html_page(f: TextIO, incoming):
     for imgtag, stat_name, count in sparks:
         # print("<tr>", file=f)
         # print("<td>", file=f)
-        print("""<div style="grid-item">""", file=f)
+        print("""<div class="grid-item">""", file=f)
         print("<br>", file=f)
         print(F"""{stat_name}({count})""", file=f)
         print("</div>", file=f)
-        print("""<div style="grid-item">""", file=f)
+        print("""<div class="grid-item">""", file=f)
 
         # print("</td><td>", file=f)
         print(imgtag, file=f)
