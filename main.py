@@ -47,7 +47,7 @@ templates = Jinja2Templates(directory="templates")
 # Health data paths
 def get_health_paths():
     """Get the base path and clinical records path for health data"""
-    base_path = config.source_dir
+    base_path = config.get_source_dir()
     clinical_path = base_path / "clinical-records"
     return base_path, clinical_path
 
@@ -735,16 +735,23 @@ async def get_documents():
 async def generic_data_page(request: Request, resource_type: str):
     """Generic data page for any FHIR resource type"""
     try:
-        # Capitalize first letter to match FHIR naming convention
-        fhir_type = resource_type.capitalize()
-        
-        # Check if files exist for this resource type
+        # Find the exact resource type name from discovered prefixes
         _, clinical_path = get_health_paths()
+        prefixes = list_prefixes(clinical_path)
+        
+        # Look for a matching resource type (case-insensitive)
+        fhir_type = None
+        for prefix in prefixes.keys():
+            if prefix.lower() == resource_type.lower():
+                fhir_type = prefix
+                break
+        
+        if not fhir_type:
+            raise HTTPException(status_code=404, detail=f"No {resource_type} data found")
+        
+        # Check if files exist (they should, since we found the prefix)
         pattern = clinical_path / f"{fhir_type}*.json"
         files = list(glob.glob(str(pattern)))
-        
-        if not files:
-            raise HTTPException(status_code=404, detail=f"No {fhir_type} data found")
         
         return templates.TemplateResponse(
             "generic_data.html",
@@ -766,10 +773,20 @@ async def generic_data_page(request: Request, resource_type: str):
 async def get_generic_data(resource_type: str):
     """Generic API endpoint for any FHIR resource type"""
     try:
-        # Capitalize first letter to match FHIR naming convention
-        fhir_type = resource_type.capitalize()
-        
+        # Find the exact resource type name from discovered prefixes
         _, clinical_path = get_health_paths()
+        prefixes = list_prefixes(clinical_path)
+        
+        # Look for a matching resource type (case-insensitive)
+        fhir_type = None
+        for prefix in prefixes.keys():
+            if prefix.lower() == resource_type.lower():
+                fhir_type = prefix
+                break
+        
+        if not fhir_type:
+            raise HTTPException(status_code=404, detail=f"No {resource_type} data found")
+        
         pattern = clinical_path / f"{fhir_type}*.json"
         records = []
         

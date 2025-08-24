@@ -259,7 +259,7 @@ def go():
     if 'source' in args:
         base = Path(args.source)
     else:
-        base = config.source_dir
+        base = config.get_source_dir()
     print("Base path to exported data is ", base)
     condition_path = base / "clinical-records"
     assert base.exists()

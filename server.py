@@ -20,7 +20,7 @@ def serve_clinical():
     try:
         # Set the path to the directory where you have expanded the apple health export file
         # export_path = Path('/Users/tomhill/Downloads/AppleHealth/apple_health_export')
-        export_path = config.source_dir
+        export_path = config.get_source_dir()
         assert os.path.exists("templates/index.html")
         observation_path = condition_path = export_path / "clinical-records"
         options = list(list_prefixes(observation_path).keys())

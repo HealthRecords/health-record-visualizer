@@ -33,9 +33,12 @@ def check_config(data_dir=None):
         data_path = Path(data_dir)
         if data_path.exists():
             print(f"✓ Using data directory: {data_path}")
-            # Dynamically update config module
+            # Set environment variable for FastAPI app to read
+            import os
+            os.environ['HEALTH_DATA_DIR'] = str(data_path.absolute())
+            # Also update config in this process
             import config
-            config.source_dir = data_path
+            config.set_source_dir(data_path)
             return True
         else:
             print(f"✗ Data directory not found: {data_path}")
@@ -44,16 +47,17 @@ def check_config(data_dir=None):
         # Use existing config.py
         try:
             import config
-            if hasattr(config, 'source_dir'):
-                if config.source_dir.exists():
-                    print(f"✓ Data directory found: {config.source_dir}")
+            if hasattr(config, 'get_source_dir'):
+                source_dir = config.get_source_dir()
+                if source_dir.exists():
+                    print(f"✓ Data directory found: {source_dir}")
                     return True
                 else:
-                    print(f"✗ Data directory not found: {config.source_dir}")
+                    print(f"✗ Data directory not found: {source_dir}")
                     print("Please ensure your Apple Health export data is in the correct location.")
                     return False
             else:
-                print("✗ config.py missing 'source_dir' setting")
+                print("✗ config.py missing 'get_source_dir' function")
                 return False
         except ImportError:
             print("✗ config.py not found")

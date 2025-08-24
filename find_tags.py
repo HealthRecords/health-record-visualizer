@@ -43,7 +43,7 @@ if __name__ == "__main__":
     # Later: I don't find fraction_cda.xml, I wonder if I made it from export_cda.xml, which is
     # 770,434,414 bytes, and would be slow. Yeah, it's taking a long time, but not this runs without error.
     file_part : pathlib.Path = Path('export_cda.xml')
-    xml_file_path = config.source_dir / file_part
+    xml_file_path = config.get_source_dir() / file_part
 
     import time
 

@@ -389,7 +389,7 @@ if __name__ == "__main__":
                         help=
                         'Graphing back end. One of "mat", "pygal", or "d3" (TBD)', default="mat")
 
-    source_file= config.source_dir / "export_cda.xml"
+    source_file= config.get_source_dir() / "export_cda.xml"
 
     args = parser.parse_args()
     if (args.labs or args.vitals) and args.apple:
