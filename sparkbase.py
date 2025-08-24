@@ -233,12 +233,19 @@ styles: str = """.grid-container {
       background-color: lightgreen; /* Example styling */
     }"""
 
-def group_by_days(stats_in: list[list[Observation]]) -> list[list[Observation]]| None:
+def group_by_days(stats_in: list[list[Observation]], source_device_name=None) -> list[list[Observation]]| None:
     if len(stats_in) == 0:
         return None
     flat = []
     for stat in stats_in:
         flat.extend(stat)
+    # TODO This doesn't really belong here, but it's an easy place to filter, since we have flat
+    if source_device_name is not None:
+        flat2 = []
+        for stat in flat:
+            if stat.source_name == source_device_name:
+                flat2.append(stat)
+        flat = flat2
     current_date = stats_in[0][0].date[:10]
     current_day = []
     stats_out = []
@@ -340,7 +347,8 @@ if __name__ == "__main__":
             observations = get_test_results(display_name)
             stats_to_graph = [[ob for ob in observations]]
             if args.days:
-                stats_to_graph = group_by_days(stats_to_graph)
+                source_device = "EMAY Oximeter"
+                stats_to_graph = group_by_days(stats_to_graph, source_device)
             sparks(stats_to_graph, head_styles=[styles], title=cat + " : " + display_name, days=args.days)
             sys.exit(0)
 
