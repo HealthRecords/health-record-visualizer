@@ -4,3 +4,4 @@ export*.zip
 .idea/
 __pycache__/
 sparklines.html
+output/
