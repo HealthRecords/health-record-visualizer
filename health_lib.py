@@ -1,7 +1,5 @@
 """
-This is a command line interface to healh_lib.py
-
-This module provides a way to explore your health information.
+This library provides a way to explore your health information.
 
 Design note: This is an exploration tool, not a product. As I don't have documentation for the file formats,
 I try to put assertions in, to verify my assumptions, like "A referenceRange only has one value". That's the only case
