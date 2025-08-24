@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Line Chart with Range Slider</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        #slider {
+            margin-left: 20px; /* Adjust the left margin as desired */
+            margin-right: 20px; /* Adjust the right margin as desired */
+        }
+    </style>
+</head>
+<body>
+    <div id="chart"></div>
+    <label for="slider">Select range:</label>
+    <div id="slider"></div>
+
+    <script>
+        // Sample data
+        const data ={{ data }} ;
+
+        // Set up the chart dimensions
+        const width = 600;
+        const height = 400;
+        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+
+        // Create SVG element
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Create scales
+        const xScale = d3.scaleLinear()
+            .domain(d3.extent(data, d => d.year)) // Domain of the data
+            .range([0, width]); // Range of the pixels
+
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.value)])
+            .range([height, 0]);
+
+        // Create line
+        const line = d3.line()
+            .x(d => xScale(d.year))
+            .y(d => yScale(d.value));
+
+        // Add line to the chart
+        svg.append("path")
+            .datum(data)
+            .attr("class", "line") // Assign class for easy selection
+            .attr("fill", "none")
+            .attr("stroke", "steelblue")
+            .attr("stroke-width", 2)
+            .attr("d", line);
+
+        // Add axes
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale);
+        
+        svg.append("g")
+            .attr("class", "x-axis") // Add class for updating later
+            .attr("transform", `translate(0,${height})`)
+            .call(xAxis);
+
+        svg.append("g")
+            .call(yAxis);
+
+        // Update chart based on slider range
+        function updateChart(range) {
+            const [lowerLimit, upperLimit] = range;
+            const filteredData = data.filter(d => d.year >= lowerLimit && d.year <= upperLimit);
+            const xDomain = d3.extent(filteredData, d => d.year);
+            const yDomain = [0, d3.max(filteredData, d => d.value)];
+
+            xScale.domain(xDomain);
+            // yScale.domain(yDomain);
+
+            svg.select(".x-axis").call(xAxis);
+            svg.select(".line").attr("d", line(filteredData));
+        }
+
+        // Initialize the range slider using jQuery UI
+        $("#slider").slider({
+            range: true,
+            min: d3.min(data, d => d.year),
+            max: d3.max(data, d => d.year),
+            values: [d3.min(data, d => d.year), d3.max(data, d => d.year)],
+            change: function(event, ui) {
+                updateChart(ui.values);
+            }
+        });
+    </script>
+</body>
+</html>
+
