@@ -67,7 +67,7 @@ def menu_observation(data_dir: Path, args):
         vital_list = [k for k in vitals.keys()]
         while (choices := menu_show(vital_list))[0] != -1:
             choice_number, choice_string = choices
-            do_vital(data_dir, choice_string, args.after, True, True, args.csv_format,
+            do_vital(data_dir, choice_string, after=args.after, print_data=True, vplot=True, csv_format=args.csv_format,
                      category_name=category)
         print("You want information about ", option[1])
         # print("Would you like to print or plot this?")
