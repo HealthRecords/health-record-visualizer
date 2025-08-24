@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from collections import Counter
 from datetime import datetime
 from math import log10
-from typing import Optional, Generator
+from typing import Optional, Generator, Tuple
 
 from health_lib import Observation, ValueQuantity
 
@@ -99,11 +99,11 @@ def find_parent_tag(patterns: list[Pattern]):
     return Pattern(pp, None)
 
 
-def find_display_names(file_name: str, patterns: list[Pattern]):
+def find_display_names(file_name: str, patterns: list[Pattern]) -> Tuple[Counter, list[str]]:
     parent_tag: Pattern = find_parent_tag(patterns)
-    element_stack = []
-    display_names = Counter()
-    names =[]
+    element_stack: list[str] = []
+    display_names: Counter = Counter()
+    names: list[str] = []
     for index, event, element in gen(file_name, ["start", "end"]):
         tag = clean_tag(element.tag)
         if event == "start":
@@ -123,7 +123,7 @@ def find_display_names(file_name: str, patterns: list[Pattern]):
                 names = []
 
             element_stack.pop()
-    return sorted(display_names), element_stack  # Only returning element_stack for test.
+    return display_names, element_stack  # Only returning element_stack for test.
 
 
 def get_test_results(display_name_wanted: Optional[str], file_name) -> Generator[Observation, None, None]:
@@ -136,8 +136,11 @@ def get_test_results(display_name_wanted: Optional[str], file_name) -> Generator
     # file_name = "test_data/export_cda_fraction.xml"
     # file_name = "test_data/export_cda_1000.xml"
     count: int = 0
-    count_sources: int = 0
     none_count: int = 0
+    unit = None
+    value = None
+    dt_string = None
+    source_name = None
     ob: Optional[Observation] = None
     for index, i in enumerate(ET.iterparse(file_name, events=("start", "end"))):
         event, element = i
@@ -170,7 +173,6 @@ def get_test_results(display_name_wanted: Optional[str], file_name) -> Generator
                 # vq = ValueQuantity(float(element.text), unit, ob.name)
                 # ob.value = [vq]
 
-
             # TODO: There is a "low" and a "high"
             if find(element_stack, ["component", "observation", "effectiveTime", "low"]):  # Just use "low" for now.
                 timestamp = element.attrib['value']
@@ -180,8 +182,8 @@ def get_test_results(display_name_wanted: Optional[str], file_name) -> Generator
             # Last tag we see, while collecting an Observation.
             if find(element_stack, ["component", "observation"]):
                 if ob is not None:
-                    assert value is not None
-                    assert unit is not None
+                    if unit is None or  value is None or dt_string is None or source_name is None:
+                        raise SyntaxError("Did not find a unit, a value, a date, or a source_name. Stack:" + str(element_stack))
 
                     vq = ValueQuantity(value, unit, ob.name)
                     ob.data = [vq]
@@ -198,7 +200,7 @@ def get_test_results(display_name_wanted: Optional[str], file_name) -> Generator
 
 def print_test_results():
     count = 0
-    for index, obs in enumerate(get_test_results()):
+    for index, obs in enumerate(get_test_results(None)):
         print(F"{index:8}: {obs} END")
         count += 1
 
