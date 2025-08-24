@@ -216,6 +216,7 @@ async def get_vital_data(
     category: str, 
     vital: str, 
     after: Optional[str] = None,
+    before: Optional[str] = None,
     format: str = "json"
 ) -> ObservationDataResponse:
     """Get data for a specific vital"""
@@ -231,10 +232,14 @@ async def get_vital_data(
             stat_info=StatInfo(display_category, display_vital)
         )
         
-        # Apply date filter if provided
+        # Apply date filters if provided
         if after:
-            ad = datetime.strptime(after, '%Y-%m-%d')
-            ws = [w for w in ws if ad < datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ')]
+            after_date = datetime.strptime(after, '%Y-%m-%d')
+            ws = [w for w in ws if after_date < datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ')]
+            
+        if before:
+            before_date = datetime.strptime(before, '%Y-%m-%d')
+            ws = [w for w in ws if datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ') < before_date]
         
         # Sort observations by date (most recent first)
         ws.sort(key=lambda x: x.date, reverse=True)
@@ -285,7 +290,7 @@ async def get_vital_data(
         raise HTTPException(status_code=500, detail=f"Error getting data for {vital}: {str(e)}")
 
 @app.get("/api/observations/{category}/{vital}/chart")
-async def get_chart_data(category: str, vital: str, after: Optional[str] = None) -> ChartDataResponse:
+async def get_chart_data(category: str, vital: str, after: Optional[str] = None, before: Optional[str] = None) -> ChartDataResponse:
     """Get chart configuration data for ECharts"""
     try:
         import urllib.parse
@@ -299,10 +304,14 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
             stat_info=StatInfo(display_category, display_vital)
         )
         
-        # Apply date filter if provided
+        # Apply date filters if provided
         if after:
-            ad = datetime.strptime(after, '%Y-%m-%d')
-            ws = [w for w in ws if ad < datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ')]
+            after_date = datetime.strptime(after, '%Y-%m-%d')
+            ws = [w for w in ws if after_date < datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ')]
+            
+        if before:
+            before_date = datetime.strptime(before, '%Y-%m-%d')
+            ws = [w for w in ws if datetime.strptime(w.date, '%Y-%m-%dT%H:%M:%SZ') < before_date]
         
         if not ws:
             return ChartDataResponse(
