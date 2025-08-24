@@ -803,16 +803,39 @@ async def get_generic_data(resource_type: str):
                 record = json.load(f)
                 
                 # Extract common fields that most FHIR resources have
+                
+                # Extract date from various possible fields
+                date = (record.get('recordedDate') or 
+                       record.get('authoredOn') or 
+                       record.get('effectiveDateTime') or 
+                       record.get('performedDateTime') or 
+                       'Unknown')
+                
+                # Extract status from various possible fields
+                status = record.get('status')
+                if not status and record.get('clinicalStatus'):
+                    clinical_status = record.get('clinicalStatus', {})
+                    coding = clinical_status.get('coding', [])
+                    if coding:
+                        status = coding[0].get('code')
+                if not status:
+                    status = 'Unknown'
+                
+                # Extract text description from various possible fields
+                text = record.get('code', {}).get('text')
+                if not text:
+                    text = record.get('medicationCodeableConcept', {}).get('text')
+                if not text and record.get('category'):
+                    text = record.get('category', [{}])[0].get('text')
+                if not text:
+                    text = 'Unknown'
+                
                 records.append({
                     "resource_type": record.get('resourceType', fhir_type),
                     "id": record.get('id', 'Unknown'),
-                    "date": record.get('recordedDate') or record.get('authoredOn') or record.get('effectiveDateTime') or record.get('performedDateTime') or 'Unknown',
-                    "status": record.get('status') or record.get('clinicalStatus', {}).get('coding', [{}])[0].get('code') if record.get('clinicalStatus') else 'Unknown',
-                    "text": (
-                        record.get('code', {}).get('text') or 
-                        record.get('medicationCodeableConcept', {}).get('text') or
-                        record.get('category', [{}])[0].get('text') if record.get('category') else 'Unknown'
-                    ),
+                    "date": date,
+                    "status": status,
+                    "text": text,
                     "raw_data": record  # Include full record for detailed view
                 })
         
