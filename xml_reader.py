@@ -36,16 +36,11 @@ from math import log10
 from typing import Optional, Generator
 
 from health_lib import Observation, ValueQuantity
-from enum import Enum
-class FetchType(Enum):
-    ATTR = 0
-    CONTENT = 1
 
 @dataclass
 class Pattern:
     path: list[str]
-    type: FetchType
-    attr: str | None  # Only used if fetch type is attr.
+    attr: str | None  # None mean get text under tag.
 
 def find(stack: list[str], target: list[str]) -> bool:
     """
@@ -101,7 +96,7 @@ def find_parent_tag(patterns: list[Pattern]):
             if path[index] != pp[index]:
                 pp = pp[:index]
     assert pp
-    return Pattern(pp, FetchType.CONTENT, None)
+    return Pattern(pp, None)
 
 
 def find_display_names(file_name: str, patterns: list[Pattern]):
@@ -116,10 +111,10 @@ def find_display_names(file_name: str, patterns: list[Pattern]):
         elif event == "end":
             for pattern in patterns:
                 if find(element_stack, target=pattern.path):
-                    if pattern.type == FetchType.ATTR:
+                    if pattern.attr:
                         dn = element.attrib[pattern.attr]
                         names.insert(0, dn)
-                    elif pattern.type == FetchType.CONTENT:
+                    else:
                         dn = element.text
                         names.insert(0, dn)
             if find(element_stack, target=parent_tag.path):
