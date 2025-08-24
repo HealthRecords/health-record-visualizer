@@ -491,6 +491,8 @@ async def conditions_page(request: Request):
         {
             "request": request,
             "title": "Conditions",
+            "api_endpoint": "/api/conditions",
+            "resource_type": "conditions",
             "breadcrumb": [{"name": "Home", "url": "/"}, {"name": "Conditions", "url": "/conditions"}]
         }
     )
@@ -611,6 +613,8 @@ async def allergies_page(request: Request):
         {
             "request": request,
             "title": "Allergies",
+            "api_endpoint": "/api/allergies",
+            "resource_type": "allergies",
             "breadcrumb": [{"name": "Home", "url": "/"}, {"name": "Allergies", "url": "/allergies"}]
         }
     )

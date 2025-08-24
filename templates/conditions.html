@@ -7,10 +7,14 @@
             <div>
                 <h1 class="mb-2">
                     <i class="bi bi-clipboard2-pulse text-warning me-2"></i>
-                    Medical Conditions
+                    {{ title }}
                 </h1>
                 <p class="text-muted mb-0">
+                    {% if resource_type == "allergies" %}
+                    Allergies and intolerances
+                    {% else %}
                     Diagnosed conditions and health issues
+                    {% endif %}
                 </p>
             </div>
             <div class="btn-group" role="group">
@@ -34,7 +38,7 @@
             <div class="card-body">
                 <h6 class="card-title">
                     <i class="bi bi-funnel me-2"></i>
-                    Filter Conditions
+                    Filter {{ title }}
                 </h6>
                 <form id="filterForm" class="row g-3">
                     <div class="col-md-4">
@@ -97,7 +101,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="bi bi-table me-2"></i>
-                    Conditions List
+                    {{ title }} List
                 </h5>
                 <span class="badge bg-primary" id="recordCount">Loading...</span>
             </div>
@@ -142,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadConditions() {
     showLoading();
     
-    fetch('/api/conditions')
+    fetch('{{ api_endpoint }}')
         .then(response => response.json())
         .then(data => {
             allConditions = data.conditions || [];
@@ -153,8 +157,8 @@ function loadConditions() {
             populateYearFilter();
         })
         .catch(error => {
-            console.error('Error loading conditions:', error);
-            showError('Failed to load conditions: ' + error.message);
+            console.error('Error loading {{ resource_type }}:', error);
+            showError('Failed to load {{ resource_type }}: ' + error.message);
         });
 }
 
@@ -163,7 +167,7 @@ function showLoading() {
         <tr>
             <td colspan="5" class="text-center">
                 <div class="spinner-border spinner-border-sm text-primary" role="status">
-                    <span class="visually-hidden">Loading conditions...</span>
+                    <span class="visually-hidden">Loading {{ resource_type }}...</span>
                 </div>
             </td>
         </tr>
@@ -186,11 +190,11 @@ function updateTable() {
             <tr>
                 <td colspan="5" class="text-center text-muted">
                     <i class="bi bi-info-circle me-2"></i>
-                    No conditions found matching the current filters
+                    No {{ resource_type }} found matching the current filters
                 </td>
             </tr>
         `;
-        document.getElementById('recordCount').textContent = '0 conditions';
+        document.getElementById('recordCount').textContent = '0 {{ resource_type }}';
         return;
     }
     
@@ -224,7 +228,7 @@ function updateTable() {
     });
     
     tbody.innerHTML = html;
-    document.getElementById('recordCount').textContent = `${filteredConditions.length} conditions`;
+    document.getElementById('recordCount').textContent = `${filteredConditions.length} {{ resource_type }}`;
     
     // Initialize tooltips
     const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -245,7 +249,7 @@ function getStatusColor(status) {
 function updateSummary() {
     if (allConditions.length === 0) {
         document.getElementById('summary').innerHTML = `
-            <p class="text-muted mb-0">No conditions available</p>
+            <p class="text-muted mb-0">No {{ resource_type }} available</p>
         `;
         return;
     }
@@ -336,13 +340,13 @@ function viewConditionDetails(index) {
                 <div class="modal-header">
                     <h5 class="modal-title">
                         <i class="bi bi-clipboard2-pulse me-2"></i>
-                        Condition Details
+                        {% if resource_type == "allergies" %}Allergy{% else %}Condition{% endif %} Details
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <dl class="row">
-                        <dt class="col-sm-4">Condition:</dt>
+                        <dt class="col-sm-4">{% if resource_type == "allergies" %}Allergy:{% else %}Condition:{% endif %}</dt>
                         <dd class="col-sm-8">${condition.condition_text}</dd>
                         
                         <dt class="col-sm-4">Recorded Date:</dt>
@@ -392,7 +396,7 @@ function exportData(format) {
     
     if (format === 'csv') {
         const csv = convertToCSV(data);
-        downloadFile(csv, 'conditions.csv', 'text/csv');
+        downloadFile(csv, '{{ resource_type }}.csv', 'text/csv');
     }
 }
 
