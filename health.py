@@ -23,6 +23,7 @@ from collections import Counter
 
 
 # TODO Split this file into UI code, and library code. We already have text_ui, and xml_reader which use this file.
+#       Should be able to pass in an output function (print, plot with matplotlib, generate html page, etc.
 # TODO print_condition and print_medicines should be generalized and combined.
 # TODO Do we want to have an option to process multiple or all stats in one run?
 # TODO Should be able to graph anything with a value quantity and a date. This is only observations, at least
@@ -302,6 +303,7 @@ sign_name: str, *, category_name
     """
     values = []
     for p in observation_files:
+        print(p)
         value = extract_value(p, stat_info)
         if value is not None:
             values.append(value)
@@ -622,7 +624,7 @@ def do_vital(condition_path: Path, vital: str, after: str, print_data: bool, vpl
         print("You need to select at least one of --plot or --print with --stat")
         return
 
-    ws = extract_all_values(yield_observation_files(condition_path), stat_info=StatInfo(vital, category_name))
+    ws = extract_all_values(yield_observation_files(condition_path), stat_info=StatInfo(category_name, vital))
 
     if after:
         ad = datetime.strptime(after, '%Y-%m-%d')
