@@ -73,6 +73,35 @@ def plot_echarts(
 
     recent_date = "2021-09-07T00:00:00"
     start_percent = date_to_percentage(recent_date, x_vals)
+    inside_ops = opts.DataZoomOpts(
+        type_="inside",
+        range_start=0, # start_percent,
+        range_end=100,
+    )
+    slider_ops = opts.DataZoomOpts(
+        type_="slider",
+        pos_bottom="0",
+        range_start=5,
+        range_end=50,
+
+    ) # TODO I think the range values here are ignored.
+    # add ECharts-only visual keys directly
+    slider_ops.opts.update({
+        "backgroundColor": "#eeeee",  # unused track
+        "fillerColor": "#20A2f6",  # selected range
+        "borderColor": "#666666",  # outline
+        "handleStyle": {  # handles at each end
+            "color": "#3b82f6",
+            "borderColor": "#1f5fbf"
+        },
+        # optional: the faint “data shadow” behind the slider
+        "dataBackground": {
+            "lineStyle": {"color": "#999999"},
+            "areaStyle": {"color": "#dddddd"}
+        },
+        # optional: label text color above handles
+        "textStyle": {"color": "#444444"},
+    })
     line = (
         Line()  # width/height will be applied on the Grid container
         .add_xaxis(xaxis_data=x_vals)
@@ -90,8 +119,8 @@ def plot_echarts(
             tooltip_opts=opts.TooltipOpts(trigger="axis"),
             legend_opts=opts.LegendOpts(pos_top="2%"),
             datazoom_opts=[
-                opts.DataZoomOpts(type_="inside", range_start=start_percent, range_end=100),
-                opts.DataZoomOpts(type_="slider", pos_bottom="0", range_start=5, range_end=50), # TODO I think the range values here are ignored.
+                inside_ops,
+                slider_ops,
             ],
             xaxis_opts=opts.AxisOpts(
                 type_="time",
