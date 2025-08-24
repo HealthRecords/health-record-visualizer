@@ -242,14 +242,43 @@ function showStatsLoading() {
 }
 
 function updateChart() {
-    const chartUrl = '/api' + window.location.pathname + '/chart';
+    // Get filter parameters from the form
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
+    
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    const chartUrl = '/api' + window.location.pathname + '/chart?' + params.toString();
+    
+    console.log('Fetching chart from:', chartUrl); // Debug log
     
     fetch(chartUrl)
-        .then(response => response.json())
+        .then(response => {
+            console.log('Chart response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(chartData => {
-            console.log('Chart data:', chartData); // Debug log
+            console.log('Chart data received:', chartData); // Debug log
+            console.log('Chart data keys:', Object.keys(chartData));
             
             const chartContainer = document.getElementById('chartContainer');
+            
+            // Properly dispose of existing chart instance BEFORE clearing container
+            if (chart) {
+                try {
+                    chart.dispose();
+                    console.log('Existing chart disposed');
+                } catch (e) {
+                    console.log('Error disposing chart (might be already disposed):', e);
+                }
+                chart = null;
+            }
+            
             chartContainer.innerHTML = '';
             
             // Check if ECharts is available
@@ -257,15 +286,37 @@ function updateChart() {
                 throw new Error('ECharts library is not loaded');
             }
             
-            chart = echarts.init(chartContainer);
-            
-            // Validate chart config exists and has data
+            // Validate chart config exists
             if (!chartData.chart_config) {
                 throw new Error('No chart configuration received');
             }
             
             console.log('Chart config keys:', Object.keys(chartData.chart_config));
+            console.log('Chart config:', JSON.stringify(chartData.chart_config, null, 2));
+            
+            // Check series data
+            if (chartData.series && chartData.series.length > 0) {
+                chartData.series.forEach((series, index) => {
+                    console.log(`Series ${index} (${series.name}): ${series.data.length} data points`);
+                    if (series.data.length > 0) {
+                        console.log(`  First point:`, series.data[0]);
+                        console.log(`  Last point:`, series.data[series.data.length - 1]);
+                    }
+                });
+            }
+            
+            chart = echarts.init(chartContainer);
+            console.log('New ECharts instance created');
+            
             chart.setOption(chartData.chart_config);
+            console.log('Chart options set successfully');
+            
+            // Force chart to resize and render
+            setTimeout(() => {
+                chart.resize();
+                console.log('Chart resized');
+                console.log('Chart container dimensions:', chartContainer.offsetWidth + 'x' + chartContainer.offsetHeight);
+            }, 100);
             
             // Make chart responsive
             window.addEventListener('resize', function() {

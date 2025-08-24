@@ -3,7 +3,7 @@ Pydantic models for FastAPI request/response schemas
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 from datetime import datetime
 
 
@@ -55,7 +55,7 @@ class ObservationDataResponse(BaseModel):
 class ChartSeries(BaseModel):
     """Chart series data for ECharts"""
     name: str = Field(..., description="Series name")
-    data: List[float] = Field(..., description="Data values")
+    data: List[Union[float, List[Union[int, float]]]] = Field(..., description="Data values or timestamp-value pairs")
     type: str = Field(default="line", description="Chart type")
 
 

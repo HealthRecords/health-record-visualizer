@@ -354,25 +354,36 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
         series = []
         
         if len(first.data) == 1:
-            # Single value (like Weight, Height)
-            values = [observation.data[0].value for observation in ws]
+            # Single value (like Weight, Height)  
+            # Convert ISO date strings to millisecond timestamps for ECharts
+            data_pairs = []
+            for observation in ws:
+                timestamp = int(datetime.strptime(observation.date, '%Y-%m-%dT%H:%M:%SZ').timestamp() * 1000)
+                data_pairs.append([timestamp, observation.data[0].value])
+            
             series.append({
                 "name": display_vital,
-                "data": values,
+                "data": data_pairs,
                 "type": "line"
             })
         elif len(first.data) == 2:
             # Two values (like Blood Pressure)
-            values_1 = [observation.data[0].value for observation in ws]
-            values_2 = [observation.data[1].value for observation in ws]
+            # Convert ISO date strings to millisecond timestamps for ECharts
+            data_pairs_1 = []
+            data_pairs_2 = []
+            for observation in ws:
+                timestamp = int(datetime.strptime(observation.date, '%Y-%m-%dT%H:%M:%SZ').timestamp() * 1000)
+                data_pairs_1.append([timestamp, observation.data[0].value])
+                data_pairs_2.append([timestamp, observation.data[1].value])
+            
             series.append({
                 "name": first.data[0].name,
-                "data": values_1,
+                "data": data_pairs_1,
                 "type": "line"
             })
             series.append({
                 "name": first.data[1].name,
-                "data": values_2,
+                "data": data_pairs_2,
                 "type": "line"
             })
         
@@ -398,8 +409,14 @@ async def get_chart_data(category: str, vital: str, after: Optional[str] = None)
                 "top": "30"
             },
             "xAxis": {
-                "type": "category",
-                "data": dates
+                "type": "time",
+                "axisLabel": {
+                    "formatter": "{yyyy}-{MM}-{dd}",
+                    "rotate": 45
+                },
+                "splitLine": {
+                    "show": True
+                }
             },
             "yAxis": {
                 "type": "value"
