@@ -26,28 +26,43 @@ def check_requirements():
         print("Please install requirements with: python -m pip install -r requirements.txt")
         return False
 
-def check_config():
+def check_config(data_dir=None):
     """Check if config.py exists and is valid"""
-    try:
-        import config
-        if hasattr(config, 'source_dir'):
-            if config.source_dir.exists():
-                print(f"✓ Data directory found: {config.source_dir}")
-                return True
-            else:
-                print(f"✗ Data directory not found: {config.source_dir}")
-                print("Please ensure your Apple Health export data is in the correct location.")
-                return False
+    if data_dir:
+        # Override config with command line data directory
+        data_path = Path(data_dir)
+        if data_path.exists():
+            print(f"✓ Using data directory: {data_path}")
+            # Dynamically update config module
+            import config
+            config.source_dir = data_path
+            return True
         else:
-            print("✗ config.py missing 'source_dir' setting")
+            print(f"✗ Data directory not found: {data_path}")
             return False
-    except ImportError:
-        print("✗ config.py not found")
-        print("Please create config.py with your data directory path")
-        return False
+    else:
+        # Use existing config.py
+        try:
+            import config
+            if hasattr(config, 'source_dir'):
+                if config.source_dir.exists():
+                    print(f"✓ Data directory found: {config.source_dir}")
+                    return True
+                else:
+                    print(f"✗ Data directory not found: {config.source_dir}")
+                    print("Please ensure your Apple Health export data is in the correct location.")
+                    return False
+            else:
+                print("✗ config.py missing 'source_dir' setting")
+                return False
+        except ImportError:
+            print("✗ config.py not found")
+            print("Please create config.py with your data directory path")
+            return False
 
 def main():
     parser = argparse.ArgumentParser(description="Start Health Data Explorer web server")
+    parser.add_argument("--data-dir", help="Path to health data directory (overrides config.py)")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind to (default: 8000)")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
@@ -61,7 +76,7 @@ def main():
         if not check_requirements():
             sys.exit(1)
         
-        if not check_config():
+        if not check_config(args.data_dir):
             sys.exit(1)
         
         print()
