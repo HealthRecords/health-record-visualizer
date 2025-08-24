@@ -12,11 +12,11 @@ could also maybe use pygal, which sounds cool. But let's use matplotlib for now.
 
 # TODO It might make sense to graph from noon to noon, instead of midnight to midnight, since I'm gathering
        stats for night times.
-TODO: Need to match the date range across all sparklines, if I'm going to line them up.
-TODO when grouped by date, you want all of them covering the same date.
-TODO: I probably need to have the same range on a single test, group by days. The all should be comparable.
-
-
+TODO: When grouping a single test by day
+        Need same x and y range for all tests.
+      When graphing multiple tests.
+        Need to match the date range across all sparklines, if I'm going to line them up.
+        Y range does not need to match.
 TODO: This file has a test name of "---": Observation-7881B1CD-55FD-42BD-8FFB-CE98D13C88CD.json, fix it.
 TOOD:    <statusCode code="completed"/>
    <effectiveTime>
@@ -185,12 +185,13 @@ def sparklines(incoming: list[list[Observation]], *, days: bool, debug: bool) ->
 
 
 def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
-              head_scripts: list[str] = (), head_styles: list[str] = (), days=None):
+              head_scripts: list[str] = (), head_styles: list[str] = (), days=None, subtitle=None):
     """
     Generate HTML page for the sparklines
     :param f:
     :param incoming: Currently a list of images to include in the HTML page. Should to to being a generator. TODO
     :param title
+    :param subtitle
     :param head_styles CSS Styles to be included in the head. XYZ in  XYZ in
              <link rel="stylesheet" href="XYZ">
     :param head_scripts src of Scripts to be included in the head. XYZ in <script src="XYZ" defer></script>
@@ -214,6 +215,9 @@ def html_page(f: TextIO, incoming: list[list[Observation]], title: str = None,
     print("""</head>\n<body>""", file=f)
     if title is not None:
         print(F"<h1>{title}</H1>", file=f)
+    if subtitle is not None:
+        print(F"<p>{subtitle}</p>", file=f)
+
     sparks = sparklines(incoming, days=days, debug=False)
     spark_len = len(sparks)
     print(
@@ -242,7 +246,7 @@ def sparks(stats: list[list[Observation]],
         return
 
     with open(output_file, "w") as fff:
-        html_page(fff, stats, title, head_scripts, head_styles, days=days)
+        html_page(fff, stats, title, head_scripts, head_styles, days=days, subtitle="Generated " + str(datetime.now()))
 
 styles: str = """.grid-container {
       display: grid;
@@ -380,10 +384,12 @@ if __name__ == "__main__":
             assert cat
             observations = get_test_results(display_name)
             stats_to_graph = [[ob for ob in observations]]
+            title = display_name
             if args.days:
                 source_device = args.device
+                title += " recorded by " + source_device
                 stats_to_graph = group_by_days(stats_to_graph, source_device)
-            sparks(stats_to_graph, head_styles=[styles], title=cat + " : " + display_name,
+            sparks(stats_to_graph, head_styles=[styles], title=title,
                    days=args.days, output_file=args.file)
             sys.exit(0)
 
