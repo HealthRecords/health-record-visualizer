@@ -1,16 +1,19 @@
-contourpy==1.2.0
-cycler==0.12.1
-fonttools==4.49.0
-kiwisolver==1.4.5
-matplotlib==3.8.3
-numpy==1.26.4
-packaging==24.0
-pillow==10.2.0
-pyparsing==3.1.2
-python-dateutil==2.9.0.post0
-six==1.16.0
+# FastAPI web application dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+jinja2>=3.1.2
+python-multipart>=0.0.6
+pydantic>=2.5.0
 
-pygal~=3.0.4
-Flask~=3.0.3
+# Data processing and visualization (existing dependencies)
+matplotlib>=3.8.0
+numpy>=1.26.0
+python-dateutil>=2.9.0
+pygal>=3.0.4
 
-pyecharts==2.0.8
+# Optional: Legacy Flask support (can be removed if not needed)
+Flask>=3.0.0
+
+# Development and testing dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0

@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "health-data-apple"
+version = "1.0.0"
+description = "Web application for exploring Apple Health data exports with interactive charts and data visualization"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Tom Hill"},
+]
+keywords = ["health", "apple health", "data visualization", "medical records", "fastapi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry", 
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0", 
+    "jinja2>=3.1.2",
+    "python-multipart>=0.0.6",
+    "pydantic>=2.5.0",
+    "matplotlib>=3.8.0",
+    "numpy>=1.26.0",
+    "python-dateutil>=2.9.0",
+    "pygal>=3.0.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+legacy = [
+    "Flask>=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/tomhill/HealthDataApple"
+Repository = "https://github.com/tomhill/HealthDataApple.git"
+Issues = "https://github.com/tomhill/HealthDataApple/issues"
+
+[project.scripts]
+health-data-server = "main:main"
+
+[tool.setuptools]
+py-modules = ["main", "models", "health_lib", "health", "config"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
