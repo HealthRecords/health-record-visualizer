@@ -34,7 +34,7 @@ from collections import Counter
 from math import log10
 from typing import Optional
 
-from health_lib import Observation
+from health_lib import Observation, ValueQuantity
 
 
 def find(stack: list[str], target: list[str]) -> bool:
@@ -97,6 +97,7 @@ def get_test_results():
     count: int = 0
     count_sources: int = 0
     none_count: int = 0
+    ob: Optional[Observation] = None
     for index, i in enumerate(ET.iterparse(file_name, events=("start", "end"))):
         event, element = i
         tag: str = unicodedata.normalize("NFKD", trim(element.tag))
@@ -107,23 +108,40 @@ def get_test_results():
             # print(element, element.attrib, element.text)
             if find(element_stack, ["component", "observation", "code"]):
                 ob = Observation(name=element.attrib['displayName'])
-            elif find(element_stack, ["component", "observation","text", "value"]):
-                ob.value = element.text
-            elif find(element_stack, ["component", "observation","text", "unit"]):
-                ob.unit = element.text
-                count += 1
-                print(F"{index:8}: {count_sources}: {ob}")
+                count_sources += 1
+                # print(F"{index:8}: {count_sources}: {ob}")
         elif event == "end":
             # Some elements/attributes are not set while processing the start tag, so we have to pick them up here.
-            if find(element_stack, ["component", "observation", "text", "sourceName"]):
-                count_sources += 1
-                if element.text is None:
-                    # print("None")
-                    none_count += 1
-                    ob.sourceName = "None"
-                else:
-                    ob.sourceName = unicodedata.normalize("NFKD", element.text)
+            # if find(element_stack, ["component", "observation", "text", "sourceName"]):
+            #     if element.text is None:
+            #         # print("None")
+            #         none_count += 1
+            #         ob.Name = "NoneName"
+            #     else:
+            #         ob.name = unicodedata.normalize("NFKD", element.text)
+
+            if find(element_stack, ["component", "observation", "text", "unit"]):
+                unit = element.text
+                count += 1
+
+            if find(element_stack, ["component", "observation", "text", "value"]):
+                value = float(element.text)
+                # vq = ValueQuantity(float(element.text), unit, ob.name)
+                # ob.value = [vq]
+            # Last tag we see, while collecting an Observation.
+            if find(element_stack, ["component", "observation"]):
+                assert ob is not None
+                assert value is not None
+                assert unit is not None
+
+                vq = ValueQuantity(value, unit, ob.name)
+                ob.data = [vq]
+                ob.filename = file_name
                 print(F"{index:8}: {count_sources}: {ob} END")
+                ob = None
+                value = None
+                unit = None
+
             element_stack.pop()
     print(F"Found {count:,} observations.")
     print(F"None count {none_count:,}")
