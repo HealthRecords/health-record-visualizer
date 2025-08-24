@@ -89,7 +89,7 @@ This application provides a web interface for exploring Apple Health exports and
 ### Directory Structure
 
 After unzipping, you'll have something like the following. This will vary, depending on whether you added 
-medical provider data (Kaier) to Apple Health.
+medical provider data (Kaiser) to Apple Health.
 ```
 apple_health_export/
 ├── clinical-records/          # Medical records (JSON files)
@@ -101,6 +101,9 @@ apple_health_export/
 ├── export_cda.xml            # Additional health data
 └── workout-routes/           # GPS workout data
 ```
+The above is the structure for AppleHealth/Kaiser. For testing, 
+we also support [Synthea](https://synthetichealth.github.io/synthea/) format, via convert_synthea.py. Other formats
+shouldn't be too hard to add. They all are supposed to he FHIR compliant.
 
 ## Usage
 
@@ -182,6 +185,7 @@ The application is designed to be extensible:
 Set these in your environment or `.env` file:
 
 ```bash
+HEALTH_DATA_DIR=/path/to/data/dir
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8000
 DEBUG=false
