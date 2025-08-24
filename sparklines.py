@@ -28,13 +28,22 @@ from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 
 from health_lib import extract_all_values, yield_observation_files, Observation, StatInfo, list_vitals
-
+from plot_health import plot_pygal
 
 def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min,
-              graph_y_max, normal_min, normal_max, fig_size_x: float = 4, fig_size_y: float = 1):
+              graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
+    use_matlib=False
+    if use_matlib:
+        return sparkline_mat(data_x_str, data_y, graph_y_min, graph_y_max, normal_min, normal_max, fig_size_x, fig_size_y)
+    else:
+        return sparkline_pygal(data_x_str, data_y, graph_y_min, graph_y_max, normal_min, normal_max, fig_size_x, fig_size_y)
+
+
+def sparkline_mat(data_x_str: list[str], data_y: list[float], graph_y_min,
+              graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
     # TODO We assumed that normal ranges would be bounded by horizontal lines.
-    # We have found some tests that have a referenceRange
-    # for some values, and not for others. I think there is a way to shade between curves. Try that.
+    #      We have found some tests that have a referenceRange
+    #      for some values, and not for others. I think there is a way to shade between curves. Try that.
     data_x = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in data_x_str]
 
     fig, axes = plt.subplots(1, 1, figsize=(fig_size_x, fig_size_y))
@@ -63,7 +72,39 @@ def sparkline(data_x_str: list[str], data_y: list[float], graph_y_min,
     plt.close()
     return '<img src="data:image/png;base64,{}"/>'.format(base64.b64encode(img.read()).decode())
 
-def sparklines(incoming: list[list[Observation]]) -> list[tuple[str, str, int]]:
+def sparkline_pygal(data_x_str: list[str], data_y: list[float], graph_y_min,
+              graph_y_max, normal_min, normal_max, fig_size_x: float = 8, fig_size_y: float = 2):
+    # TODO We assumed that normal ranges would be bounded by horizontal lines.
+    #      We have found some tests that have a referenceRange
+    #      for some values, and not for others. I think there is a way to shade between curves. Try that.
+    data_x = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ') for date in data_x_str]
+    # data_x = [1,2,3]
+    # data_y = [1,4,9]
+    chart_bytes = plot_pygal(data_x, data_y,None,
+                       graph_subject=None, data_name_1=None,
+                             data_name_2=None, get_bytes=True)
+
+    html = F"""<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Pygal Chart Example</title>
+    </head>
+    <body>
+    
+    <h2>Bar Chart</h2>
+    <img src="{chart_bytes}" alt="Bar Chart">
+    
+    </body>
+    </html>
+    """
+    with open("temp.html", "w") as f:
+        f.write(html)
+
+    return F"""<img src="{chart_bytes}">"""
+    # return F'<img src="data:image/svg;base64,{chart_bytes}'
+
+
+def sparklines(incoming: list[list[Observation]], debug=False) -> list[tuple[str, str, int]]:
     """
     Generate a list of sparklines.
     :param incoming: a list of lists of Observations.
@@ -79,7 +120,7 @@ def sparklines(incoming: list[list[Observation]]) -> list[tuple[str, str, int]]:
         data_x = [x.date for x in one_ob_list]
         data_y = [x.data[0].value for x in one_ob_list]  # TODO handle blood pressure and other multi-values stats.
         if one_ob_list[0].range is not None:
-            check_for_messy_data = False
+            check_for_messy_data = debug
             nn = [x.range for x in one_ob_list]
             if None in nn:
                 print("We have a set of observations with different range limit values for the same test. "
@@ -112,7 +153,7 @@ def sparklines(incoming: list[list[Observation]]) -> list[tuple[str, str, int]]:
         graph_y_min = 0
         graph_y_max = max(data_y)
         img_info = sparkline(data_x, data_y, graph_y_min, graph_y_max,
-                             normal_min, normal_max, 3, 0.25)
+                             normal_min, normal_max, 8, 1)
         outgoing.append((img_info, one_ob_list[0].name, len(one_ob_list)))
 
     return outgoing
@@ -125,19 +166,34 @@ def html_page(f: TextIO, incoming):
     :param incoming:
     :return:
     """
-    print("""<!DOCTYPE html><html><head><meta charset="utf-8" /><body>""", file=f)
+    print("""<!DOCTYPE html>
+        <html lang="en">
+            <head title="Sparklines">
+                <meta charset="utf-8"/>
+            </head>
+            <body>""", file=f)
     print("<h1>Sparklines</H1>", file=f)
     sparks = sparklines(incoming)
-    print("<table>", file=f)
+    # print("<table>", file=f)
+    print("""<div style="display: grid;grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 200px);">""", file=f)
     for imgtag, stat_name, count in sparks:
-        print("<tr>", file=f)
-        print("<td>", file=f)
+        # print("<tr>", file=f)
+        # print("<td>", file=f)
+        print("""<div style="grid-item">""", file=f)
+        print("<br>", file=f)
         print(F"""{stat_name}({count})""", file=f)
-        print("</td><td>", file=f)
+        print("</div>", file=f)
+        print("""<div style="grid-item">""", file=f)
+
+        # print("</td><td>", file=f)
         print(imgtag, file=f)
-        print("</td>\n", file=f)
-        print("</tr>", file=f)
-    print("</table>", file=f)
+        print("<br>", file=f)
+        print("</div>", file=f)
+        # print("</td>\n", file=f)
+        # print("</tr>", file=f)
+    # print("</table>", file=f)
+    print("</div>", file=f)
     print("""</body></html>""", file=f)
 
 if __name__ == "__main__":
