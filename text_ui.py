@@ -1,3 +1,5 @@
+import sys
+from collections import Counter
 from pathlib import Path
 import argparse
 
@@ -52,6 +54,27 @@ def menu_show(choices: list[str]):
         option = int(c)
     return option - 1, choices[option - 1]
 
+def menu_print_or_plot(data_dir: Path, args:list[str]) -> None:
+    """
+    TODO: In progress, not used yet. Observations can be printed or plotted.
+
+    :param data_dir:
+    :param args:
+    :return:
+    """
+    list_cat = ["print", "plot"]
+    while (option := menu_show(list_cat))[0] != -1:
+        option_number, category = option
+        vitals = list_vitals(yield_observation_files(data_dir), category)
+        vital_list = [k for k in vitals.keys()]
+        while (choices := menu_show(vital_list))[0] != -1:
+            choice_number, choice_string = choices
+            do_vital(data_dir, choice_string, after=args.after, print_data=True, vplot=True, csv_format=args.csv_format,
+                     category_name=category, chart_file_name="whyDoWeNeedThisPlot.html")
+        print("You want information about ", option[1])
+        # print("Would you like to print or plot this?")
+    return
+
 def menu_observation(data_dir: Path, args):
     """
     Observations are anything measured. Test results, measurements of height or weight, etc.
@@ -68,7 +91,7 @@ def menu_observation(data_dir: Path, args):
         while (choices := menu_show(vital_list))[0] != -1:
             choice_number, choice_string = choices
             do_vital(data_dir, choice_string, after=args.after, print_data=True, vplot=True, csv_format=args.csv_format,
-                     category_name=category)
+                     category_name=category, chart_file_name="whyDoWeNeedThisPlot.html")
         print("You want information about ", option[1])
         # print("Would you like to print or plot this?")
     return
@@ -82,7 +105,10 @@ def menu_main(condition_path: Path, args) -> None:
     :return: No Return
     """
     print()
-    options = list(list_prefixes(condition_path).keys())
+    prefixes: Counter = list_prefixes(condition_path)
+    if not prefixes:
+        print("No data found")
+    options = list(prefixes.keys())
     while (var := menu_show(options))[0] != len(options):
         value = var[1]
         match value:
@@ -111,6 +137,11 @@ def go():
     args  = parse_args()
     base = Path("export/apple_health_export")
     base = Path('/Users/tomhill/Downloads/AppleHealth/apple_health_export')
+    base = Path('/Users/tomhill/Downloads/apple_health_export')
+    if not Path.exists(base):
+        print("No data found in ", base)
+        sys.exit(1)
+
 
     condition_path = base / "clinical-records"
 
