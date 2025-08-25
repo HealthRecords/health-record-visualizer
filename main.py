@@ -23,6 +23,10 @@ from health_lib import (
     yield_observation_files, extract_all_values, StatInfo,
     ValueString
 )
+from health_lib_cda import (
+    list_cda_categories, get_cda_observations, get_cda_chart_data,
+    list_cda_observation_types, CDAObservation, CDACategory
+)
 from health import print_conditions, print_medicines, print_procedures
 from models import (
     PrefixResponse, CategoryResponse, VitalResponse, 
@@ -64,13 +68,28 @@ async def homepage(request: Request):
             for prefix, count in prefixes.items()
         ]
         
+        # Add CDA data if available
+        cda_items = []
+        if config.has_cda_database():
+            cda_categories = list_cda_categories()
+            cda_items = [
+                {
+                    "name": f"CDA - {cat.name}",
+                    "count": cat.count,
+                    "url": cat.url
+                }
+                for cat in cda_categories
+            ]
+        
         return templates.TemplateResponse(
             "index.html", 
             {
                 "request": request, 
                 "menu_items": menu_items,
+                "cda_items": cda_items,
                 "title": "Health Data Explorer",
-                "total_files": sum(prefixes.values())
+                "total_files": sum(prefixes.values()),
+                "has_cda": config.has_cda_database()
             }
         )
     except Exception as e:
@@ -845,6 +864,155 @@ async def get_generic_data(resource_type: str):
         return {"records": records, "count": len(records)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading {resource_type}: {str(e)}")
+
+
+# ============================================================================
+# CDA (Clinical Document Architecture) API Endpoints
+# ============================================================================
+
+@app.get("/cda", response_class=HTMLResponse)
+async def cda_overview(request: Request):
+    """CDA overview page showing all categories"""
+    if not config.has_cda_database():
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "CDA database not found. Please run the preprocessor first.",
+            "suggestion": "Run: python preprocess_cda.py /path/to/export_cda.xml"
+        })
+    
+    categories = list_cda_categories()
+    return templates.TemplateResponse("cda_overview.html", {
+        "request": request,
+        "categories": categories,
+        "title": "CDA Health Data"
+    })
+
+
+@app.get("/api/cda/categories")
+async def get_cda_categories():
+    """Get all CDA observation categories"""
+    if not config.has_cda_database():
+        return {"categories": []}
+    
+    categories = list_cda_categories()
+    return {
+        "categories": [
+            {
+                "name": cat.name,
+                "count": cat.count,
+                "url": cat.url
+            } for cat in categories
+        ]
+    }
+
+
+@app.get("/cda/{category}", response_class=HTMLResponse)
+async def cda_category_page(request: Request, category: str):
+    """CDA category page showing observation types"""
+    if not config.has_cda_database():
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "CDA database not found",
+            "suggestion": "Run the CDA preprocessor first"
+        })
+    
+    # Convert URL-safe category back to original
+    category_name = category.replace('-', ' ').title()
+    if category_name.lower() == 'vital-signs':
+        category_name = 'Vital Signs'
+    elif category_name.lower() == 'laboratory':
+        category_name = 'Laboratory'
+    
+    observation_types = list_cda_observation_types(category_name)
+    
+    return templates.TemplateResponse("cda_category.html", {
+        "request": request,
+        "category": category_name,
+        "observation_types": observation_types,
+        "title": f"CDA - {category_name}"
+    })
+
+
+@app.get("/api/cda/{category}")
+async def get_cda_category_data(category: str, limit: Optional[int] = 100):
+    """Get CDA observations for a category"""
+    if not config.has_cda_database():
+        return {"observations": []}
+    
+    # Convert URL-safe category back to original
+    category_name = category.replace('-', ' ').title()
+    if category_name.lower() == 'vital-signs':
+        category_name = 'Vital Signs'
+    elif category_name.lower() == 'laboratory':
+        category_name = 'Laboratory'
+    
+    observations = get_cda_observations(category_name, limit=limit)
+    
+    return {
+        "observations": [
+            {
+                "id": obs.id,
+                "name": obs.name,
+                "category": obs.category,
+                "value": obs.value,
+                "unit": obs.unit,
+                "date": obs.date,
+                "source_name": obs.source_name
+            } for obs in observations
+        ]
+    }
+
+
+@app.get("/cda/{category}/{observation_name}", response_class=HTMLResponse)
+async def cda_observation_page(request: Request, category: str, observation_name: str):
+    """CDA specific observation page with chart"""
+    if not config.has_cda_database():
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "CDA database not found",
+            "suggestion": "Run the CDA preprocessor first"
+        })
+    
+    # Convert URL-safe category back to original
+    category_name = category.replace('-', ' ').title()
+    if category_name.lower() == 'vital-signs':
+        category_name = 'Vital Signs'
+    elif category_name.lower() == 'laboratory':
+        category_name = 'Laboratory'
+    
+    # URL decode observation name
+    observation_name = observation_name.replace('%20', ' ')
+    
+    return templates.TemplateResponse("cda_observation.html", {
+        "request": request,
+        "category": category_name,
+        "observation_name": observation_name,
+        "title": f"CDA - {observation_name}"
+    })
+
+
+@app.get("/api/cda/{category}/{observation_name}/chart")
+async def get_cda_chart_data_endpoint(category: str, observation_name: str):
+    """Get chart data for CDA observation"""
+    if not config.has_cda_database():
+        raise HTTPException(status_code=404, detail="CDA database not found")
+    
+    # Convert URL-safe category back to original
+    category_name = category.replace('-', ' ').title()
+    if category_name.lower() == 'vital-signs':
+        category_name = 'Vital Signs'
+    elif category_name.lower() == 'laboratory':
+        category_name = 'Laboratory'
+    
+    # URL decode observation name
+    observation_name = observation_name.replace('%20', ' ')
+    
+    try:
+        chart_data = get_cda_chart_data(category_name, observation_name)
+        return chart_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading chart data: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn

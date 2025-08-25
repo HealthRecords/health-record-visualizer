@@ -20,6 +20,16 @@ def set_source_dir(path: Path) -> None:
     global _source_dir
     _source_dir = path
 
+
+def get_cda_database_path() -> Path:
+    """Get path to CDA observations database"""
+    return Path("cda_observations.db")
+
+
+def has_cda_database() -> bool:
+    """Check if CDA database exists"""
+    return get_cda_database_path().exists()
+
 import re
 import unicodedata
 

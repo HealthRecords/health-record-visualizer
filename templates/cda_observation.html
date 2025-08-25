@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/cda">CDA Data</a></li>
+                <li class="breadcrumb-item"><a href="/cda/{{ category.lower().replace(' ', '-') }}">{{ category }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ observation_name }}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2">
+                    {% if "heart rate" in observation_name.lower() %}
+                        <i class="bi bi-heart text-danger me-2"></i>
+                    {% elif "oxygen" in observation_name.lower() or "spo2" in observation_name.lower() %}
+                        <i class="bi bi-lungs text-info me-2"></i>
+                    {% elif "glucose" in observation_name.lower() %}
+                        <i class="bi bi-droplet text-warning me-2"></i>
+                    {% elif "respiratory" in observation_name.lower() or "breathing" in observation_name.lower() %}
+                        <i class="bi bi-wind text-primary me-2"></i>
+                    {% elif "weight" in observation_name.lower() %}
+                        <i class="bi bi-speedometer text-success me-2"></i>
+                    {% elif "height" in observation_name.lower() %}
+                        <i class="bi bi-rulers text-secondary me-2"></i>
+                    {% else %}
+                        <i class="bi bi-activity text-primary me-2"></i>
+                    {% endif %}
+                    {{ observation_name }}
+                </h1>
+                <p class="text-muted mb-0">
+                    CDA - {{ category }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up me-2"></i>
+                    Time Series Chart
+                </h5>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleGrid">
+                        <i class="bi bi-grid"></i> Grid
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleLegend">
+                        <i class="bi bi-list"></i> Legend
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="loadingChart" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading chart...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading chart data...</p>
+                </div>
+                <div id="chartError" class="alert alert-danger d-none" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Error loading chart:</strong>
+                    <span id="errorMessage"></span>
+                </div>
+                <canvas id="observationChart" class="d-none" width="400" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-table me-2"></i>
+                    Recent Observations
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="observationsList" class="table-responsive">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const category = '{{ category.lower().replace(" ", "-") }}';
+    const observationName = '{{ observation_name }}';
+    
+    let chart = null;
+
+    // Load chart data
+    async function loadChart() {
+        try {
+            const response = await fetch(`/api/cda/${category}/${encodeURIComponent(observationName)}/chart`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            document.getElementById('loadingChart').classList.add('d-none');
+            document.getElementById('chartError').classList.add('d-none');
+            document.getElementById('observationChart').classList.remove('d-none');
+            
+            createChart(data);
+        } catch (error) {
+            console.error('Error loading chart:', error);
+            document.getElementById('loadingChart').classList.add('d-none');
+            document.getElementById('chartError').classList.remove('d-none');
+            document.getElementById('errorMessage').textContent = error.message;
+        }
+    }
+
+    function createChart(data) {
+        const ctx = document.getElementById('observationChart').getContext('2d');
+        
+        const chartData = data.labels.map((label, index) => ({
+            x: new Date(label),
+            y: data.data[index]
+        }));
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: observationName,
+                    data: chartData,
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1,
+                    pointRadius: 2,
+                    pointHoverRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            displayFormats: {
+                                hour: 'MMM dd HH:mm',
+                                day: 'MMM dd',
+                                week: 'MMM dd',
+                                month: 'MMM yyyy'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date/Time'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Value'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return new Date(context[0].parsed.x).toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Load observations list
+    async function loadObservationsList() {
+        try {
+            const response = await fetch(`/api/cda/${category}?limit=50`);
+            const data = await response.json();
+            
+            let html = '';
+            if (data.observations && data.observations.length > 0) {
+                html = `
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Value</th>
+                                <th>Unit</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                data.observations
+                    .filter(obs => obs.name === observationName)
+                    .slice(0, 20)
+                    .forEach(obs => {
+                        const date = new Date(obs.date).toLocaleString();
+                        html += `
+                            <tr>
+                                <td><small>${date}</small></td>
+                                <td><strong>${obs.value}</strong></td>
+                                <td>${obs.unit}</td>
+                                <td><small>${obs.source_name}</small></td>
+                            </tr>
+                        `;
+                    });
+                
+                html += '</tbody></table>';
+            } else {
+                html = '<p class="text-muted">No observations found.</p>';
+            }
+            
+            document.getElementById('observationsList').innerHTML = html;
+        } catch (error) {
+            console.error('Error loading observations:', error);
+            document.getElementById('observationsList').innerHTML = 
+                '<div class="alert alert-danger">Error loading observations data.</div>';
+        }
+    }
+
+    // Chart control buttons
+    document.getElementById('toggleGrid')?.addEventListener('click', function() {
+        if (chart) {
+            chart.options.scales.x.grid.display = !chart.options.scales.x.grid.display;
+            chart.options.scales.y.grid.display = !chart.options.scales.y.grid.display;
+            chart.update();
+        }
+    });
+
+    document.getElementById('toggleLegend')?.addEventListener('click', function() {
+        if (chart) {
+            chart.options.plugins.legend.display = !chart.options.plugins.legend.display;
+            chart.update();
+        }
+    });
+
+    // Load data
+    loadChart();
+    loadObservationsList();
+});
+</script>
+{% endblock %}

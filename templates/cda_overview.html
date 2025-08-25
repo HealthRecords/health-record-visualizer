@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2">
+                    <i class="bi bi-file-earmark-medical text-primary me-2"></i>
+                    CDA Health Data
+                </h1>
+                <p class="text-muted mb-0">
+                    Clinical Document Architecture data from Apple Health export
+                    {% if categories %}({{ categories|length }} categories){% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if categories %}
+<div class="row g-4">
+    {% for category in categories %}
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    {% if "vital" in category.name.lower() %}
+                        <i class="bi bi-heart-pulse text-danger me-2"></i>
+                    {% elif "lab" in category.name.lower() %}
+                        <i class="bi bi-flask text-primary me-2"></i>
+                    {% elif "biometric" in category.name.lower() %}
+                        <i class="bi bi-person-badge text-success me-2"></i>
+                    {% else %}
+                        <i class="bi bi-graph-up text-info me-2"></i>
+                    {% endif %}
+                    {{ category.name }}
+                    <span class="badge bg-primary ms-2">{{ "{:,}".format(category.count) }}</span>
+                </h5>
+                <p class="card-text text-muted">
+                    {% if "vital" in category.name.lower() %}
+                        Heart rate, oxygen saturation, respiratory rate, and other vital signs
+                    {% elif "lab" in category.name.lower() %}
+                        Laboratory test results including glucose measurements
+                    {% elif "biometric" in category.name.lower() %}
+                        Height, weight, and body measurements
+                    {% else %}
+                        Health observations and measurements
+                    {% endif %}
+                </p>
+                <a href="{{ category.url }}" class="btn btn-outline-primary">
+                    View Data
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>No CDA data found.</strong>
+            <p class="mb-0 mt-2">
+                The CDA database has not been created yet. To process your CDA data, run:
+                <br>
+                <code class="ms-2">python preprocess_cda.py /path/to/export_cda.xml</code>
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.hover-card');
+    
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px)';
+            this.style.transition = 'transform 0.2s ease';
+            this.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '';
+        });
+    });
+});
+</script>
+{% endblock %}
