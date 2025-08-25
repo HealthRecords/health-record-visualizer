@@ -1,21 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg width="100%" height="100%" viewBox="0 0 133 103" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;">
-    <g transform="matrix(1,0,0,1,-0.562717,-0.0896871)">
-        <g transform="matrix(1,0,0,1,9.84836,4.83018e-05)">
-            <g transform="matrix(3.00955,0,0,3.03757,80.2543,-3.03735)">
+    <g transform="matrix(1,0,0,1,5.23296e-06,1.08609e-06)">
+        <g transform="matrix(1,0,0,1,-0.562717,-0.0896871)">
+            <g transform="matrix(3.00955,0,0,3.03757,90.1027,-3.0373)">
                 <g>
                     <g>
-                        <path d="M0,6C-3,0 -9,0 -12,3C-15,6 -15,12 -12,15L0,24L12,15C15,12 15,6 12,3C9,0 3,0 0,6Z" style="fill:rgb(251,51,31);fill-rule:nonzero;"/>
+                        <g>
+                            <path d="M0,6C-3,0 -9,0 -12,3C-15,6 -15,12 -12,15L0,24L12,15C15,12 15,6 12,3C9,0 3,0 0,6Z" style="fill:rgb(251,51,31);fill-rule:nonzero;"/>
+                        </g>
                     </g>
                 </g>
             </g>
         </g>
-        <g transform="matrix(1,0,0,1,9.84836,4.83018e-05)">
-            <g transform="matrix(1.40482,0,0,2.86656,-6.46404,65.5797)">
+        <g transform="matrix(1,0,0,1,-0.562717,-0.0896871)">
+            <g transform="matrix(1.40482,0,0,2.86656,3.38432,65.5797)">
                 <g>
                     <g>
-                        <path d="M0,8L8,8L10,4L12,12L14,2L16,8L20,8L25,6L30,10L35,8L40,5L45,9L55,7L60,9L65,8L70,6L75,10L80,8L90,8" style="fill:none;fill-rule:nonzero;stroke:rgb(52,67,219);stroke-width:2.5px;"/>
+                        <g>
+                            <path d="M0,8L8,8L10,4L12,12L14,-3.494L16,8L20,8L25,0.98L30,10L35,8L40,3.317L45,9L55,7L60,9L65,8L70,6L75,10L80,8L90,8" style="fill:none;fill-rule:nonzero;stroke:rgb(52,67,219);stroke-width:2.5px;"/>
+                        </g>
                     </g>
                 </g>
             </g>
