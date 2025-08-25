@@ -69,10 +69,9 @@
                         <div class="col-md-6">
                             <label for="bucketFilter" class="form-label">
                                 Time Grouping 
-                                <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Large datasets are automatically grouped to improve performance. Select manual grouping to override."></i>
+                                <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Data is automatically grouped for performance. Current selection shows the chosen grouping interval."></i>
                             </label>
                             <select class="form-control" id="bucketFilter" name="bucket">
-                                <option value="">Auto (Smart)</option>
                             </select>
                         </div>
                         <div class="col-12">
@@ -249,13 +248,11 @@ function loadSourceOptions() {
         });
 }
 
-function loadBucketOptions(availableBuckets) {
+function loadBucketOptions(availableBuckets, currentBucket) {
     const select = document.getElementById('bucketFilter');
     
-    // Clear existing options (keep "Auto")
-    while (select.children.length > 1) {
-        select.removeChild(select.lastChild);
-    }
+    // Clear all existing options
+    select.innerHTML = '';
     
     if (availableBuckets) {
         availableBuckets.forEach(bucket => {
@@ -266,6 +263,10 @@ function loadBucketOptions(availableBuckets) {
             if (!bucket.enabled) {
                 option.textContent += ' (too many points)';
                 option.style.color = '#999';
+            }
+            // Set the current bucket as selected
+            if (bucket.value === currentBucket) {
+                option.selected = true;
             }
             select.appendChild(option);
         });
@@ -382,7 +383,7 @@ function updateChart() {
                 
                 // Update bucket options based on current data
                 if (chartData.bucket_info) {
-                    loadBucketOptions(chartData.bucket_info.available_buckets);
+                    loadBucketOptions(chartData.bucket_info.available_buckets, chartData.bucket_info.bucket_size);
                     
                     // Show bucket information
                     console.log(`Chart loaded: ${chartData.bucket_info.total_raw_points.toLocaleString()} raw points, grouped by ${chartData.bucket_info.bucket_label}`);
