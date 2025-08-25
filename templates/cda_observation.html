@@ -60,10 +60,19 @@
                             <label for="dateBefore" class="form-label">Before Date</label>
                             <input type="date" class="form-control" id="dateBefore" name="before">
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <label for="sourceFilter" class="form-label">Data Source</label>
                             <select class="form-control" id="sourceFilter" name="source">
                                 <option value="">All Sources</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bucketFilter" class="form-label">
+                                Time Grouping 
+                                <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Large datasets are automatically grouped to improve performance. Select manual grouping to override."></i>
+                            </label>
+                            <select class="form-control" id="bucketFilter" name="bucket">
+                                <option value="">Auto (Smart)</option>
                             </select>
                         </div>
                         <div class="col-12">
@@ -181,21 +190,43 @@ let chart = null;
 const itemsPerPage = 50;
 let currentPage = 1;
 
+// Global error handler
+window.addEventListener('error', function(e) {
+    console.error('JavaScript Error:', e.error);
+    showError(`JavaScript Error: ${e.message} at line ${e.lineno}`);
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('Unhandled Promise Rejection:', e.reason);
+    showError(`Promise Error: ${e.reason}`);
+});
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
-    loadSourceOptions();
-    loadData();
-    
-    // Filter form submission
-    document.getElementById('filterForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    try {
+        loadSourceOptions();
         loadData();
-    });
-    
-    // Show all data toggle
-    document.getElementById('showAllData').addEventListener('change', function() {
-        updateDataTable();
-    });
+        
+        // Initialize Bootstrap tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Filter form submission
+        document.getElementById('filterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            loadData();
+        });
+        
+        // Show all data toggle
+        document.getElementById('showAllData').addEventListener('change', function() {
+            updateDataTable();
+        });
+    } catch (error) {
+        console.error('Initialization Error:', error);
+        showError(`Initialization Error: ${error.message}`);
+    }
 });
 
 function loadSourceOptions() {
@@ -216,6 +247,29 @@ function loadSourceOptions() {
         .catch(error => {
             console.log('Could not load source options:', error);
         });
+}
+
+function loadBucketOptions(availableBuckets) {
+    const select = document.getElementById('bucketFilter');
+    
+    // Clear existing options (keep "Auto")
+    while (select.children.length > 1) {
+        select.removeChild(select.lastChild);
+    }
+    
+    if (availableBuckets) {
+        availableBuckets.forEach(bucket => {
+            const option = document.createElement('option');
+            option.value = bucket.value;
+            option.textContent = bucket.label;
+            option.disabled = !bucket.enabled;
+            if (!bucket.enabled) {
+                option.textContent += ' (too many points)';
+                option.style.color = '#999';
+            }
+            select.appendChild(option);
+        });
+    }
 }
 
 function loadData() {
@@ -304,39 +358,59 @@ function updateChart() {
             return response.json();
         })
         .then(chartData => {
-            const chartContainer = document.getElementById('chartContainer');
-            
-            if (chart) {
-                try {
-                    chart.dispose();
-                } catch (e) {
-                    console.log('Error disposing chart:', e);
-                }
-                chart = null;
-            }
-            
-            chartContainer.innerHTML = '';
-            
-            if (typeof echarts === 'undefined') {
-                throw new Error('ECharts library is not loaded');
-            }
-            
-            if (!chartData.chart_config) {
-                throw new Error('No chart configuration received');
-            }
-            
-            chart = echarts.init(chartContainer);
-            chart.setOption(chartData.chart_config);
-            
-            setTimeout(() => {
-                chart.resize();
-            }, 100);
-            
-            window.addEventListener('resize', function() {
+            try {
+                const chartContainer = document.getElementById('chartContainer');
+                
                 if (chart) {
-                    chart.resize();
+                    try {
+                        chart.dispose();
+                    } catch (e) {
+                        console.log('Error disposing chart:', e);
+                    }
+                    chart = null;
                 }
-            });
+                
+                chartContainer.innerHTML = '';
+                
+                if (typeof echarts === 'undefined') {
+                    throw new Error('ECharts library is not loaded');
+                }
+                
+                if (!chartData.chart_config) {
+                    throw new Error('No chart configuration received');
+                }
+                
+                // Update bucket options based on current data
+                if (chartData.bucket_info) {
+                    loadBucketOptions(chartData.bucket_info.available_buckets);
+                    
+                    // Show bucket information
+                    console.log(`Chart loaded: ${chartData.bucket_info.total_raw_points.toLocaleString()} raw points, grouped by ${chartData.bucket_info.bucket_label}`);
+                }
+                
+                console.log('Initializing chart with', Object.keys(chartData.chart_config).length, 'config keys');
+                chart = echarts.init(chartContainer);
+                
+                console.log('Setting chart options...');
+                chart.setOption(chartData.chart_config);
+                console.log('Chart options set successfully');
+                
+                setTimeout(() => {
+                    if (chart) {
+                        chart.resize();
+                        console.log('Chart resized');
+                    }
+                }, 100);
+                
+                window.addEventListener('resize', function() {
+                    if (chart) {
+                        chart.resize();
+                    }
+                });
+            } catch (error) {
+                console.error('Error in chart processing:', error);
+                throw error; // Re-throw to be caught by the outer catch
+            }
         })
         .catch(error => {
             console.error('Chart error:', error);

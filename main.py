@@ -28,7 +28,7 @@ from health_lib_cda import (
     list_cda_observation_types, CDAObservation, CDACategory
 )
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO
 import csv
 from health import print_conditions, print_medicines, print_procedures
@@ -1126,13 +1126,136 @@ async def get_cda_observation_sources(category: str, observation_name: str):
         raise HTTPException(status_code=500, detail=f"Error loading sources: {str(e)}")
 
 
+# ============================================================================
+# CDA Chart Bucketing Helper Functions
+# ============================================================================
+
+def determine_bucket_size(total_points: int, manual_bucket: Optional[str] = None) -> str:
+    """Determine the appropriate bucket size based on data volume"""
+    if manual_bucket:
+        return manual_bucket
+    
+    # Automatic bucketing thresholds
+    if total_points <= 1000:
+        return 'raw'
+    elif total_points <= 7000:
+        return 'hour'  # Group by hour
+    elif total_points <= 30000:
+        return 'day'   # Group by day
+    elif total_points <= 100000:
+        return 'week'  # Group by week
+    elif total_points <= 500000:
+        return 'month' # Group by month
+    else:
+        return 'year'  # Group by year
+
+
+def get_bucket_info(bucket_size: str) -> dict:
+    """Get information about bucket configuration"""
+    bucket_configs = {
+        'raw': {'label': 'Raw Data', 'format': None},
+        'hour': {'label': 'Hour', 'format': '%Y-%m-%d %H:00:00'},
+        'day': {'label': 'Day', 'format': '%Y-%m-%d 00:00:00'},
+        'week': {'label': 'Week', 'format': '%Y-W%W'},
+        'month': {'label': 'Month', 'format': '%Y-%m-01 00:00:00'},
+        'year': {'label': 'Year', 'format': '%Y-01-01 00:00:00'}
+    }
+    return bucket_configs.get(bucket_size, bucket_configs['day'])
+
+
+def get_available_buckets(total_points: int) -> list:
+    """Get list of available bucket options for the user"""
+    buckets = [
+        {'value': 'raw', 'label': 'Raw Data', 'enabled': total_points <= 20000},
+        {'value': 'hour', 'label': 'Hourly', 'enabled': True},
+        {'value': 'day', 'label': 'Daily', 'enabled': True}, 
+        {'value': 'week', 'label': 'Weekly', 'enabled': True},
+        {'value': 'month', 'label': 'Monthly', 'enabled': True},
+        {'value': 'year', 'label': 'Yearly', 'enabled': True}
+    ]
+    return buckets
+
+
+def process_raw_data(rows) -> dict:
+    """Process raw data points without bucketing"""
+    series_data = {}
+    
+    for row in rows:
+        source = row['source_name']
+        if source not in series_data:
+            series_data[source] = []
+        
+        # Convert date to timestamp
+        try:
+            dt = datetime.fromisoformat(row['date'].replace('Z', '+00:00'))
+            timestamp = int(dt.timestamp() * 1000)  # ECharts expects milliseconds
+            series_data[source].append([timestamp, row['value']])
+        except Exception as e:
+            print(f"Date parsing error: {e}")
+            continue
+    
+    return series_data
+
+
+def process_bucketed_data(rows, bucket_size: str) -> dict:
+    """Process data points with bucketing/grouping"""
+    from collections import defaultdict
+    import statistics
+    
+    # Group data by source and time bucket
+    bucketed_data = defaultdict(lambda: defaultdict(list))
+    
+    for row in rows:
+        source = row['source_name']
+        
+        try:
+            dt = datetime.fromisoformat(row['date'].replace('Z', '+00:00'))
+            
+            # Create bucket key based on bucket size
+            if bucket_size == 'hour':
+                bucket_key = dt.replace(minute=0, second=0, microsecond=0)
+            elif bucket_size == 'day':
+                bucket_key = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif bucket_size == 'week':
+                # Start of week (Monday)
+                days_since_monday = dt.weekday()
+                bucket_key = dt.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_since_monday)
+            elif bucket_size == 'month':
+                bucket_key = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            elif bucket_size == 'year':
+                bucket_key = dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            else:
+                bucket_key = dt  # Fallback to raw
+            
+            bucketed_data[source][bucket_key].append(row['value'])
+            
+        except Exception as e:
+            print(f"Date parsing error in bucketing: {e}")
+            continue
+    
+    # Convert to final format with aggregated values
+    series_data = {}
+    
+    for source, time_buckets in bucketed_data.items():
+        series_data[source] = []
+        
+        for bucket_time, values in sorted(time_buckets.items()):
+            # Use mean for aggregation (much faster than median)
+            aggregated_value = sum(values) / len(values) if values else 0
+            timestamp = int(bucket_time.timestamp() * 1000)
+            series_data[source].append([timestamp, aggregated_value])
+    
+    return series_data
+
+
 @app.get("/api/cda/{category}/{observation_name}/chart")
 async def get_cda_chart_data_endpoint(
     category: str, 
     observation_name: str,
     after: Optional[str] = None,
     before: Optional[str] = None,
-    source: Optional[str] = None
+    source: Optional[str] = None,
+    bucket: Optional[str] = None
 ):
     """Get ECharts-compatible chart data for CDA observation"""
     if not config.has_cda_database():
@@ -1184,23 +1307,22 @@ async def get_cda_chart_data_endpoint(
                 "series": []
             }}
         
-        # Group by source for multiple series
-        series_data = {}
+        total_points = len(rows)
         unit = rows[0]['unit'] if rows else ''
         
-        for row in rows:
-            source = row['source_name']
-            if source not in series_data:
-                series_data[source] = []
-            
-            # Convert date to timestamp
-            try:
-                dt = datetime.fromisoformat(row['date'].replace('Z', '+00:00'))
-                timestamp = int(dt.timestamp() * 1000)  # ECharts expects milliseconds
-                series_data[source].append([timestamp, row['value']])
-            except Exception as e:
-                print(f"Date parsing error: {e}")
-                continue
+        # Determine bucketing strategy
+        bucket_size = determine_bucket_size(total_points, bucket)
+        bucket_info = get_bucket_info(bucket_size)
+        
+        # Apply bucketing if needed
+        if bucket_size == 'raw':
+            # No bucketing - use raw data points
+            series_data = process_raw_data(rows)
+            subtitle = f"Raw data ({total_points:,} points)"
+        else:
+            # Bucket the data
+            series_data = process_bucketed_data(rows, bucket_size)
+            subtitle = f"Grouped by {bucket_info['label']} ({len(list(series_data.values())[0]) if series_data else 0:,} points from {total_points:,} raw points)"
         
         # Create ECharts series configuration
         series = []
@@ -1225,23 +1347,23 @@ async def get_cda_chart_data_endpoint(
         chart_config = {
             "title": {
                 "text": observation_name,
+                "subtext": subtitle,
                 "left": "center"
             },
             "tooltip": {
                 "trigger": "axis",
                 "axisPointer": {
                     "type": "cross"
-                },
-                "formatter": "function(params) { return params.map(p => `${p.seriesName}<br/>${new Date(p.value[0]).toLocaleString()}<br/>Value: ${p.value[1]} " + unit + "`).join('<br/>'); }"
+                }
             },
             "legend": {
                 "data": list(series_data.keys()),
-                "top": "30px"
+                "top": "50px"
             },
             "grid": {
                 "left": "50px",
                 "right": "50px", 
-                "top": "80px",
+                "top": "100px",
                 "bottom": "50px",
                 "containLabel": True
             },
@@ -1260,7 +1382,15 @@ async def get_cda_chart_data_endpoint(
             "series": series
         }
         
-        return {"chart_config": chart_config}
+        return {
+            "chart_config": chart_config,
+            "bucket_info": {
+                "total_raw_points": total_points,
+                "bucket_size": bucket_size,
+                "available_buckets": get_available_buckets(total_points),
+                "bucket_label": bucket_info['label']
+            }
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading chart data: {str(e)}")
