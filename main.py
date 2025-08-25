@@ -27,6 +27,10 @@ from health_lib_cda import (
     list_cda_categories, get_cda_observations, get_cda_chart_data,
     list_cda_observation_types, CDAObservation, CDACategory
 )
+import sqlite3
+from datetime import datetime
+from io import StringIO
+import csv
 from health import print_conditions, print_medicines, print_procedures
 from models import (
     PrefixResponse, CategoryResponse, VitalResponse, 
@@ -991,9 +995,16 @@ async def cda_observation_page(request: Request, category: str, observation_name
     })
 
 
-@app.get("/api/cda/{category}/{observation_name}/chart")
-async def get_cda_chart_data_endpoint(category: str, observation_name: str):
-    """Get chart data for CDA observation"""
+@app.get("/api/cda/{category}/{observation_name}/data")
+async def get_cda_observation_data(
+    category: str, 
+    observation_name: str,
+    after: Optional[str] = None,
+    before: Optional[str] = None, 
+    source: Optional[str] = None,
+    format: Optional[str] = None
+):
+    """Get detailed data for a specific CDA observation with filtering and export"""
     if not config.has_cda_database():
         raise HTTPException(status_code=404, detail="CDA database not found")
     
@@ -1008,8 +1019,249 @@ async def get_cda_chart_data_endpoint(category: str, observation_name: str):
     observation_name = observation_name.replace('%20', ' ')
     
     try:
-        chart_data = get_cda_chart_data(category_name, observation_name)
-        return chart_data
+        conn = sqlite3.connect(config.get_cda_database_path())
+        conn.row_factory = sqlite3.Row
+        
+        # Build query with filters
+        query = """
+            SELECT * FROM cda_observations 
+            WHERE category = ? AND name = ?
+        """
+        params = [category_name, observation_name]
+        
+        if after:
+            query += " AND date >= ?"
+            params.append(after)
+        if before:
+            query += " AND date <= ?"
+            params.append(before)
+        if source:
+            query += " AND source_name = ?"
+            params.append(source)
+        
+        query += " ORDER BY date DESC"
+        
+        cursor = conn.execute(query, params)
+        observations = []
+        
+        for row in cursor.fetchall():
+            obs_data = {
+                "id": row['id'],
+                "name": row['name'],
+                "category": row['category'],
+                "value": row['value'],
+                "unit": row['unit'],
+                "date": row['date'],
+                "source_name": row['source_name']
+            }
+            observations.append(obs_data)
+        
+        conn.close()
+        
+        # Handle export formats
+        if format == 'csv':
+            output = StringIO()
+            writer = csv.DictWriter(output, fieldnames=['date', 'value', 'unit', 'source_name'])
+            writer.writeheader()
+            for obs in observations:
+                writer.writerow({
+                    'date': obs['date'],
+                    'value': obs['value'], 
+                    'unit': obs['unit'],
+                    'source_name': obs['source_name']
+                })
+            
+            from fastapi.responses import Response
+            return Response(
+                content=output.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename={observation_name.replace(' ', '_')}_data.csv"}
+            )
+        
+        elif format == 'json':
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                content={"observations": observations},
+                headers={"Content-Disposition": f"attachment; filename={observation_name.replace(' ', '_')}_data.json"}
+            )
+        
+        # Regular JSON response for web interface
+        return {"data": observations}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading observation data: {str(e)}")
+
+
+@app.get("/api/cda/{category}/{observation_name}/sources")
+async def get_cda_observation_sources(category: str, observation_name: str):
+    """Get available data sources for a CDA observation"""
+    if not config.has_cda_database():
+        raise HTTPException(status_code=404, detail="CDA database not found")
+    
+    # Convert URL-safe category back to original
+    category_name = category.replace('-', ' ').title()
+    if category_name.lower() == 'vital-signs':
+        category_name = 'Vital Signs'
+    elif category_name.lower() == 'laboratory':
+        category_name = 'Laboratory'
+    
+    # URL decode observation name
+    observation_name = observation_name.replace('%20', ' ')
+    
+    try:
+        conn = sqlite3.connect(config.get_cda_database_path())
+        cursor = conn.execute("""
+            SELECT DISTINCT source_name 
+            FROM cda_observations 
+            WHERE category = ? AND name = ?
+            ORDER BY source_name
+        """, (category_name, observation_name))
+        
+        sources = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return {"sources": sources}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading sources: {str(e)}")
+
+
+@app.get("/api/cda/{category}/{observation_name}/chart")
+async def get_cda_chart_data_endpoint(
+    category: str, 
+    observation_name: str,
+    after: Optional[str] = None,
+    before: Optional[str] = None,
+    source: Optional[str] = None
+):
+    """Get ECharts-compatible chart data for CDA observation"""
+    if not config.has_cda_database():
+        raise HTTPException(status_code=404, detail="CDA database not found")
+    
+    # Convert URL-safe category back to original
+    category_name = category.replace('-', ' ').title()
+    if category_name.lower() == 'vital-signs':
+        category_name = 'Vital Signs'
+    elif category_name.lower() == 'laboratory':
+        category_name = 'Laboratory'
+    
+    # URL decode observation name
+    observation_name = observation_name.replace('%20', ' ')
+    
+    try:
+        conn = sqlite3.connect(config.get_cda_database_path())
+        conn.row_factory = sqlite3.Row
+        
+        # Build query with filters
+        query = """
+            SELECT date, value, source_name, unit 
+            FROM cda_observations 
+            WHERE category = ? AND name = ?
+        """
+        params = [category_name, observation_name]
+        
+        if after:
+            query += " AND date >= ?"
+            params.append(after)
+        if before:
+            query += " AND date <= ?"
+            params.append(before)
+        if source:
+            query += " AND source_name = ?"
+            params.append(source)
+        
+        query += " ORDER BY date ASC"
+        
+        cursor = conn.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            return {"chart_config": {
+                "title": {"text": f"No data available for {observation_name}"},
+                "xAxis": {"type": "time"},
+                "yAxis": {"type": "value"},
+                "series": []
+            }}
+        
+        # Group by source for multiple series
+        series_data = {}
+        unit = rows[0]['unit'] if rows else ''
+        
+        for row in rows:
+            source = row['source_name']
+            if source not in series_data:
+                series_data[source] = []
+            
+            # Convert date to timestamp
+            try:
+                dt = datetime.fromisoformat(row['date'].replace('Z', '+00:00'))
+                timestamp = int(dt.timestamp() * 1000)  # ECharts expects milliseconds
+                series_data[source].append([timestamp, row['value']])
+            except Exception as e:
+                print(f"Date parsing error: {e}")
+                continue
+        
+        # Create ECharts series configuration
+        series = []
+        colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452']
+        
+        for i, (source_name, data) in enumerate(series_data.items()):
+            series.append({
+                "name": source_name,
+                "type": "line",
+                "data": data,
+                "smooth": True,
+                "symbol": "circle",
+                "symbolSize": 4,
+                "lineStyle": {
+                    "color": colors[i % len(colors)]
+                },
+                "itemStyle": {
+                    "color": colors[i % len(colors)]
+                }
+            })
+        
+        chart_config = {
+            "title": {
+                "text": observation_name,
+                "left": "center"
+            },
+            "tooltip": {
+                "trigger": "axis",
+                "axisPointer": {
+                    "type": "cross"
+                },
+                "formatter": "function(params) { return params.map(p => `${p.seriesName}<br/>${new Date(p.value[0]).toLocaleString()}<br/>Value: ${p.value[1]} " + unit + "`).join('<br/>'); }"
+            },
+            "legend": {
+                "data": list(series_data.keys()),
+                "top": "30px"
+            },
+            "grid": {
+                "left": "50px",
+                "right": "50px", 
+                "top": "80px",
+                "bottom": "50px",
+                "containLabel": True
+            },
+            "xAxis": {
+                "type": "time",
+                "name": "Date/Time",
+                "nameLocation": "middle",
+                "nameGap": 30
+            },
+            "yAxis": {
+                "type": "value",
+                "name": f"Value ({unit})" if unit else "Value",
+                "nameLocation": "middle",
+                "nameGap": 40
+            },
+            "series": series
+        }
+        
+        return {"chart_config": chart_config}
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading chart data: {str(e)}")
 

@@ -3,15 +3,6 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/">Home</a></li>
-                <li class="breadcrumb-item"><a href="/cda">CDA Data</a></li>
-                <li class="breadcrumb-item"><a href="/cda/{{ category.lower().replace(' ', '-') }}">{{ category }}</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ observation_name }}</li>
-            </ol>
-        </nav>
-        
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="mb-2">
@@ -33,61 +24,74 @@
                     {{ observation_name }}
                 </h1>
                 <p class="text-muted mb-0">
-                    CDA - {{ category }}
+                    CDA - {{ category }} measurement data and trends
                 </p>
             </div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary" onclick="exportData('csv')">
+                    <i class="bi bi-download me-1"></i>
+                    Export CSV
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="exportData('json')">
+                    <i class="bi bi-download me-1"></i>
+                    Export JSON
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-12">
+<!-- Controls Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-graph-up me-2"></i>
-                    Time Series Chart
-                </h5>
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleGrid">
-                        <i class="bi bi-grid"></i> Grid
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleLegend">
-                        <i class="bi bi-list"></i> Legend
-                    </button>
-                </div>
-            </div>
             <div class="card-body">
-                <div id="loadingChart" class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading chart...</span>
+                <h6 class="card-title">
+                    <i class="bi bi-sliders me-2"></i>
+                    Filter Options
+                </h6>
+                <form id="filterForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="dateAfter" class="form-label">After Date</label>
+                            <input type="date" class="form-control" id="dateAfter" name="after">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="dateBefore" class="form-label">Before Date</label>
+                            <input type="date" class="form-control" id="dateBefore" name="before">
+                        </div>
+                        <div class="col-12">
+                            <label for="sourceFilter" class="form-label">Data Source</label>
+                            <select class="form-control" id="sourceFilter" name="source">
+                                <option value="">All Sources</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel me-1"></i>
+                                Apply Filters
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Clear
+                            </button>
+                        </div>
                     </div>
-                    <p class="mt-2 text-muted">Loading chart data...</p>
-                </div>
-                <div id="chartError" class="alert alert-danger d-none" role="alert">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>Error loading chart:</strong>
-                    <span id="errorMessage"></span>
-                </div>
-                <canvas id="observationChart" class="d-none" width="400" height="150"></canvas>
+                </form>
             </div>
         </div>
     </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-12">
+    
+    <div class="col-md-6">
         <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-table me-2"></i>
-                    Recent Observations
-                </h5>
-            </div>
             <div class="card-body">
-                <div id="observationsList" class="table-responsive">
-                    <div class="text-center py-3">
-                        <div class="spinner-border text-primary" role="status">
+                <h6 class="card-title">
+                    <i class="bi bi-bar-chart me-2"></i>
+                    Summary Statistics
+                </h6>
+                <div id="summaryStats">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
                     </div>
@@ -96,174 +100,420 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<!-- Chart Row -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up me-2"></i>
+                    {{ observation_name }} Trends
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="chartContainer" style="width: 100%; height: 400px;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading chart...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const category = '{{ category.lower().replace(" ", "-") }}';
-    const observationName = '{{ observation_name }}';
-    
-    let chart = null;
-
-    // Load chart data
-    async function loadChart() {
-        try {
-            const response = await fetch(`/api/cda/${category}/${encodeURIComponent(observationName)}/chart`);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            document.getElementById('loadingChart').classList.add('d-none');
-            document.getElementById('chartError').classList.add('d-none');
-            document.getElementById('observationChart').classList.remove('d-none');
-            
-            createChart(data);
-        } catch (error) {
-            console.error('Error loading chart:', error);
-            document.getElementById('loadingChart').classList.add('d-none');
-            document.getElementById('chartError').classList.remove('d-none');
-            document.getElementById('errorMessage').textContent = error.message;
-        }
-    }
-
-    function createChart(data) {
-        const ctx = document.getElementById('observationChart').getContext('2d');
-        
-        const chartData = data.labels.map((label, index) => ({
-            x: new Date(label),
-            y: data.data[index]
-        }));
-
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                datasets: [{
-                    label: observationName,
-                    data: chartData,
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    tension: 0.1,
-                    pointRadius: 2,
-                    pointHoverRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            displayFormats: {
-                                hour: 'MMM dd HH:mm',
-                                day: 'MMM dd',
-                                week: 'MMM dd',
-                                month: 'MMM yyyy'
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Date/Time'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Value'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: true
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: function(context) {
-                                return new Date(context[0].parsed.x).toLocaleString();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // Load observations list
-    async function loadObservationsList() {
-        try {
-            const response = await fetch(`/api/cda/${category}?limit=50`);
-            const data = await response.json();
-            
-            let html = '';
-            if (data.observations && data.observations.length > 0) {
-                html = `
-                    <table class="table table-striped">
+<!-- Data Table Row -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-table me-2"></i>
+                    Data Points
+                </h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="showAllData">
+                    <label class="form-check-label" for="showAllData">
+                        Show all data
+                    </label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="dataTable">
                         <thead>
                             <tr>
-                                <th>Date/Time</th>
+                                <th>Date</th>
+                                <th>Time</th>
                                 <th>Value</th>
                                 <th>Unit</th>
                                 <th>Source</th>
                             </tr>
                         </thead>
-                        <tbody>
-                `;
-                
-                data.observations
-                    .filter(obs => obs.name === observationName)
-                    .slice(0, 20)
-                    .forEach(obs => {
-                        const date = new Date(obs.date).toLocaleString();
-                        html += `
+                        <tbody id="dataTableBody">
                             <tr>
-                                <td><small>${date}</small></td>
-                                <td><strong>${obs.value}</strong></td>
-                                <td>${obs.unit}</td>
-                                <td><small>${obs.source_name}</small></td>
+                                <td colspan="5" class="text-center">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading data...</span>
+                                    </div>
+                                </td>
                             </tr>
-                        `;
-                    });
-                
-                html += '</tbody></table>';
-            } else {
-                html = '<p class="text-muted">No observations found.</p>';
+                        </tbody>
+                    </table>
+                </div>
+                <nav aria-label="Data pagination" id="paginationNav" style="display: none;">
+                    <ul class="pagination justify-content-center" id="pagination">
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentData = [];
+let filteredData = [];
+let chart = null;
+const itemsPerPage = 50;
+let currentPage = 1;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadSourceOptions();
+    loadData();
+    
+    // Filter form submission
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadData();
+    });
+    
+    // Show all data toggle
+    document.getElementById('showAllData').addEventListener('change', function() {
+        updateDataTable();
+    });
+});
+
+function loadSourceOptions() {
+    const category = '{{ category.lower().replace(" ", "-") }}';
+    const observationName = '{{ observation_name }}';
+    
+    fetch(`/api/cda/${category}/${encodeURIComponent(observationName)}/sources`)
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('sourceFilter');
+            data.sources.forEach(source => {
+                const option = document.createElement('option');
+                option.value = source;
+                option.textContent = source;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.log('Could not load source options:', error);
+        });
+}
+
+function loadData() {
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
+    
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    const category = '{{ category.lower().replace(" ", "-") }}';
+    const observationName = '{{ observation_name }}';
+    const apiUrl = `/api/cda/${category}/${encodeURIComponent(observationName)}/data?` + params.toString();
+    
+    // Show loading states
+    showChartLoading();
+    showTableLoading();
+    showStatsLoading();
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Response:', data);
+            currentData = data;
+            filteredData = data.data ? [...data.data] : [];
+            
+            updateChart();
+            updateDataTable();
+            updateSummaryStats();
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
+            showError('Failed to load data: ' + error.message);
+        });
+}
+
+function showChartLoading() {
+    document.getElementById('chartContainer').innerHTML = `
+        <div class="d-flex justify-content-center align-items-center h-100">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading chart...</span>
+            </div>
+        </div>
+    `;
+}
+
+function showTableLoading() {
+    document.getElementById('dataTableBody').innerHTML = `
+        <tr>
+            <td colspan="5" class="text-center">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading data...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function showStatsLoading() {
+    document.getElementById('summaryStats').innerHTML = `
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+}
+
+function updateChart() {
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
+    
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    const category = '{{ category.lower().replace(" ", "-") }}';
+    const observationName = '{{ observation_name }}';
+    const chartUrl = `/api/cda/${category}/${encodeURIComponent(observationName)}/chart?` + params.toString();
+    
+    fetch(chartUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(chartData => {
+            const chartContainer = document.getElementById('chartContainer');
+            
+            if (chart) {
+                try {
+                    chart.dispose();
+                } catch (e) {
+                    console.log('Error disposing chart:', e);
+                }
+                chart = null;
             }
             
-            document.getElementById('observationsList').innerHTML = html;
-        } catch (error) {
-            console.error('Error loading observations:', error);
-            document.getElementById('observationsList').innerHTML = 
-                '<div class="alert alert-danger">Error loading observations data.</div>';
-        }
+            chartContainer.innerHTML = '';
+            
+            if (typeof echarts === 'undefined') {
+                throw new Error('ECharts library is not loaded');
+            }
+            
+            if (!chartData.chart_config) {
+                throw new Error('No chart configuration received');
+            }
+            
+            chart = echarts.init(chartContainer);
+            chart.setOption(chartData.chart_config);
+            
+            setTimeout(() => {
+                chart.resize();
+            }, 100);
+            
+            window.addEventListener('resize', function() {
+                if (chart) {
+                    chart.resize();
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Chart error:', error);
+            document.getElementById('chartContainer').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error loading chart: ${error.message}
+                </div>
+            `;
+        });
+}
+
+function updateDataTable() {
+    const showAll = document.getElementById('showAllData').checked;
+    const dataToShow = showAll ? filteredData : filteredData.slice(0, itemsPerPage);
+    
+    const tbody = document.getElementById('dataTableBody');
+    
+    if (dataToShow.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No data points found
+                </td>
+            </tr>
+        `;
+        return;
     }
-
-    // Chart control buttons
-    document.getElementById('toggleGrid')?.addEventListener('click', function() {
-        if (chart) {
-            chart.options.scales.x.grid.display = !chart.options.scales.x.grid.display;
-            chart.options.scales.y.grid.display = !chart.options.scales.y.grid.display;
-            chart.update();
-        }
+    
+    let html = '';
+    dataToShow.forEach(point => {
+        const date = new Date(point.date);
+        const dateStr = date.toLocaleDateString();
+        const timeStr = date.toLocaleTimeString();
+        
+        html += `
+            <tr>
+                <td>${dateStr}</td>
+                <td>${timeStr}</td>
+                <td><strong>${point.value}</strong></td>
+                <td>${point.unit || ''}</td>
+                <td>${point.source_name}</td>
+            </tr>
+        `;
     });
+    
+    tbody.innerHTML = html;
+    
+    if (!showAll && filteredData.length > itemsPerPage) {
+        setupPagination();
+        document.getElementById('paginationNav').style.display = 'block';
+    } else {
+        document.getElementById('paginationNav').style.display = 'none';
+    }
+}
 
-    document.getElementById('toggleLegend')?.addEventListener('click', function() {
-        if (chart) {
-            chart.options.plugins.legend.display = !chart.options.plugins.legend.display;
-            chart.update();
-        }
-    });
+function setupPagination() {
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const pagination = document.getElementById('pagination');
+    
+    let html = '';
+    
+    html += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
+        </li>
+    `;
+    
+    for (let i = 1; i <= totalPages; i++) {
+        html += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `;
+    }
+    
+    html += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
+        </li>
+    `;
+    
+    pagination.innerHTML = html;
+}
 
-    // Load data
-    loadChart();
-    loadObservationsList();
-});
+function changePage(page) {
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    updateDataTable();
+}
+
+function updateSummaryStats() {
+    if (!filteredData || !Array.isArray(filteredData) || filteredData.length === 0) {
+        document.getElementById('summaryStats').innerHTML = `
+            <p class="text-muted mb-0">No data available for statistics</p>
+        `;
+        return;
+    }
+    
+    const values = filteredData.map(point => point.value);
+    const count = values.length;
+    const sum = values.reduce((a, b) => a + b, 0);
+    const avg = sum / count;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const unit = filteredData[0]?.unit || '';
+    
+    const statsHtml = `
+        <div class="row text-center">
+            <div class="col-6 col-md-3">
+                <div class="border-end">
+                    <h6 class="text-primary mb-1">${count}</h6>
+                    <small class="text-muted">Count</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="border-end">
+                    <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
+                    <small class="text-muted">Average</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="border-end">
+                    <h6 class="text-danger mb-1">${min} ${unit}</h6>
+                    <small class="text-muted">Minimum</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div>
+                    <h6 class="text-warning mb-1">${max} ${unit}</h6>
+                    <small class="text-muted">Maximum</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('summaryStats').innerHTML = statsHtml;
+}
+
+function clearFilters() {
+    document.getElementById('filterForm').reset();
+    loadData();
+}
+
+function exportData(format) {
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
+    
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    params.append('format', format);
+    
+    const category = '{{ category.lower().replace(" ", "-") }}';
+    const observationName = '{{ observation_name }}';
+    const exportUrl = `/api/cda/${category}/${encodeURIComponent(observationName)}/data?` + params.toString();
+    
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = `{{ observation_name|replace(' ', '_') }}_data.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function showError(message) {
+    const chartContainer = document.getElementById('chartContainer');
+    chartContainer.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+}
 </script>
 {% endblock %}
