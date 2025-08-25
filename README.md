@@ -6,18 +6,28 @@ This application provides a web interface for exploring Apple Health exports and
 
 **This software is for informational purposes only and is not intended for medical decision-making. Always consult with healthcare professionals for medical advice. The authors are not responsible for any medical decisions made based on this software's output.**
 
-![Health Data Explorer](BP_Graph.png)
 
-## Features
+<table>
+<tr>
+<td width="65%">
+<h1>Features</h1>
+<ul>
+  <li><b>Web-based Interface</b>: Modern, responsive Bootstrap 5 UI</li>
+  <li><b>Interactive Charts</b>: Apache ECharts integration with reference range visualization</li>
+  <li><b>Medical Records Support</b>: View conditions, medications, procedures, and lab results</li>
+  <li><b>Data Filtering</b>: Filter by date ranges and other criteria</li>
+  <li><b>Reference Ranges</b>: Automatic display of normal lab value ranges</li>
+  <li><b>Export Options</b>: Export data as CSV or JSON</li>
+  <li><b>Multi-value Observations</b>: Support for readings like blood pressure</li>
+  <li><b>Responsive Design</b>: Works on desktop and mobile devices</li>
+</ul>
+</td>
+<td width="35%">
+<img src="BP_Graph.png" xwidth="200">
+</td>
+</tr>
+</table>
 
-- **Web-based Interface**: Modern, responsive Bootstrap 5 UI
-- **Interactive Charts**: Apache ECharts integration with reference range visualization
-- **Medical Records Support**: View conditions, medications, procedures, and lab results
-- **Data Filtering**: Filter by date ranges and other criteria
-- **Reference Ranges**: Automatic display of normal lab value ranges
-- **Export Options**: Export data as CSV or JSON
-- **Multi-value Observations**: Support for readings like blood pressure
-- **Responsive Design**: Works on desktop and mobile devices
 
 ## Quick Start
 
