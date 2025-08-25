@@ -5,3 +5,4 @@ export*.zip
 __pycache__/
 sparklines.html
 output/
+synthea_test_data/*
