@@ -1,17 +1,8 @@
 # TODOs
 
-
-
-Consolidating top-of-file TODOs I had been using, when this was one file, now that it is several files.
-
 With a single developer, a bug tracker is too heavyweight.
 
 # Simple
-1. handle non-numeric response. I know the creatine one has this, and http://localhost:8000/observations/lab/AB%20screen%2C%20blood looks like it too. 
-2. Update references, etc, so others can install and run.
-3. When plotting, we should not always write to the same file, and we should tell the user where we wrote the plot.
-files are hard coded, should pass them in.both the above and the source file(s) - are there any places that do this left?
-4. Add a smoothing option to the charts, it's hard to read when it jumps around a lot.
 5. on the blood pressure graph, we still have numeric labels on each point on diastolic. We already removed them from 
 systolic (and everything else)
 6. write all graphs to "output" folder. 
@@ -58,6 +49,7 @@ Needs more tests.
    5. "rg -l "CALCULATED GLOMERULAR FILTRATION RATE"
    6. I get lots of files, but the ones that i checked don't have the <60 that is displayed in the kaiser app.
    7. There are TWO files that have >60 in them. the rg above finds 586 files.
+1. handle non-numeric response. I know the creatine one has this, and http://localhost:8000/observations/lab/AB%20screen%2C%20blood looks like it too. 
 
 # Notes
 Things that may not require action, at least on my end.
