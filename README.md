@@ -78,13 +78,20 @@ It features interactive charts, data filtering, and visualization of your health
    Navigate to http://localhost:8000
 
 ## Getting Your Data
+HaRVey does not connect to servers and download data directly. You need to download data, in whatever way your provider offers you. Since the iPhone 
+has an option to connect with health care provider's servers, and download the data, I have used that. 
 
 ### (Optional) Connect Kaiser Permanente to Apple Health
+This may work with other providers, but Kaiser is the only one tested. In theory, they have the same format: [FHIR](https://fhir.org/), 
+but in practice, there may be differences. For examnple, Kaiser data comes in as separate files, Synthea data comes in as an array, in
+one file.
 
 1. Open the **Apple Health** app on your iPhone
 2. Tap your **profile picture** to open your profile
 3. Select **"Health Records"** → **"Add Accounts"**
 4. Follow prompts to connect Kaiser Permanente
+
+This gets you Kaiser data on your iPhone.
 
 ### From Apple Health
 
@@ -100,7 +107,7 @@ It features interactive charts, data filtering, and visualization of your health
 ### Directory Structure
 
 After unzipping, you'll have something like the following. This will vary, depending on whether you added 
-medical provider data (Kaiser) to Apple Health.
+medical provider data to Apple Health.
 ```
 apple_health_export/
 ├── clinical-records/          # Medical records (JSON files)
@@ -210,6 +217,7 @@ from pathlib import Path
 # Path to your Apple Health export directory
 source_dir = Path("/path/to/your/apple_health_export")
 ```
+You can usually just use the environment variable.
 
 ## Troubleshooting
 
