@@ -1,6 +1,7 @@
-# Health Data Explorer - Apple Health & Medical Records Visualizer
+# Harvey - Health Record Visualizer 
 
-This application provides a web interface for exploring Apple Health exports and medical records data. It features interactive charts, data filtering, and visualization of your health data.
+<b>H</b>a<b>R</b><b>V</b>ey - is a project to allow you to inspect and graph your health records. 
+It features interactive charts, data filtering, and visualization of your health data.
 
 ## Disclaimer
 
@@ -113,7 +114,7 @@ apple_health_export/
 ```
 The above is the structure for AppleHealth/Kaiser. For testing, 
 we also support [Synthea](https://synthetichealth.github.io/synthea/) format, via convert_synthea.py. Other formats
-shouldn't be too hard to add. They all are supposed to he FHIR compliant.
+shouldn't be too hard to add. They all are supposed to be FHIR compliant.
 
 ## Usage
 
@@ -261,10 +262,9 @@ This is a project, not a product. If you need more polished or supported solutio
 ## Data Format Notes
 
 This tool works with:
-- **FHIR R4** medical records (JSON format)
 - **Apple Health** export formats (XML/JSON)
 - **Kaiser Permanente** exports (via Apple Health)
-- Other healthcare providers using standard FHIR formats
+- This may work with other healthcare providers using standard FHIR formats, but there are many variations on "standard".
 
 ## Contributing
 
