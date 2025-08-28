@@ -8,7 +8,7 @@ from pathlib import Path
 # the zip file directly
 
 # Check for environment variable first (set by start_server.py)
-_default_dir = os.environ.get('HEALTH_DATA_DIR', 'apple_health_export')
+_default_dir = os.environ.get('HEALTH_DATA_DIR', '/Users/tomhill/Downloads/apple_health_export')
 _source_dir: Path = Path(_default_dir)
 
 def get_source_dir() -> Path:
