@@ -100,6 +100,26 @@
     <!-- Custom JS -->
     <script src="/static/js/app.js"></script>
     
+    <!-- Shared hover effects for cards -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.hover-shadow');
+        
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+                this.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
+                this.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '';
+            });
+        });
+    });
+    </script>
+    
     {% block scripts %}{% endblock %}
 </body>
 </html>

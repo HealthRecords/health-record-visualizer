@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import data_card, cda_data_card %}
 
 {% block content %}
 <div class="row">
@@ -49,67 +50,12 @@
 
 <div class="row g-4">
     {% for item in menu_items %}
-    <div class="col-lg-4 col-md-6">
-        <div class="card h-100 shadow-sm hover-shadow">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">
-                    {% if item.name == "Observation" %}
-                        <i class="bi bi-activity text-success me-2"></i>
-                    {% elif item.name == "Condition" %}
-                        <i class="bi bi-clipboard2-pulse text-warning me-2"></i>
-                    {% elif item.name == "MedicationRequest" %}
-                        <i class="bi bi-capsule text-primary me-2"></i>
-                    {% elif item.name == "Procedure" %}
-                        <i class="bi bi-bandaid text-info me-2"></i>
-                    {% elif item.name == "AllergyIntolerance" %}
-                        <i class="bi bi-exclamation-triangle text-danger me-2"></i>
-                    {% else %}
-                        <i class="bi bi-file-earmark-medical text-secondary me-2"></i>
-                    {% endif %}
-                    
-                    {% if item.name == "MedicationRequest" %}
-                        Medications
-                    {% elif item.name == "AllergyIntolerance" %}
-                        Allergies
-                    {% elif item.name == "DocumentReference" %}
-                        Documents
-                    {% else %}
-                        {{ item.name }}s
-                    {% endif %}
-                </h5>
-                
-                <p class="card-text text-muted mb-3">
-                    {% if item.name == "Observation" %}
-                        Vital signs, measurements, and laboratory results
-                    {% elif item.name == "Condition" %}
-                        Medical conditions and diagnoses
-                    {% elif item.name == "MedicationRequest" %}
-                        Prescribed medications and treatments
-                    {% elif item.name == "Procedure" %}
-                        Medical procedures and interventions
-                    {% elif item.name == "AllergyIntolerance" %}
-                        Allergies and intolerances
-                    {% elif item.name == "DocumentReference" %}
-                        Clinical documents and reports
-                    {% else %}
-                        {{ item.name }} records
-                    {% endif %}
-                </p>
-                
-                <div class="mt-auto">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-secondary fs-6">
-                            {{ item.count }} files
-                        </span>
-                        <a href="{{ item.url }}" class="btn btn-outline-primary">
-                            Explore
-                            <i class="bi bi-arrow-right ms-1"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        {% set title = "Medications" if item.name == "MedicationRequest" else "Allergies" if item.name == "AllergyIntolerance" else "Documents" if item.name == "DocumentReference" else item.name + "s" %}
+        {% set description = "Vital signs, measurements, and laboratory results" if item.name == "Observation" else "Medical conditions and diagnoses" if item.name == "Condition" else "Prescribed medications and treatments" if item.name == "MedicationRequest" else "Medical procedures and interventions" if item.name == "Procedure" else "Allergies and intolerances" if item.name == "AllergyIntolerance" else "Clinical documents and reports" if item.name == "DocumentReference" else item.name + " records" %}
+        {% set icon_class = "bi-activity" if item.name == "Observation" else "bi-clipboard2-pulse" if item.name == "Condition" else "bi-capsule" if item.name == "MedicationRequest" else "bi-bandaid" if item.name == "Procedure" else "bi-exclamation-triangle" if item.name == "AllergyIntolerance" else "bi-file-earmark-medical" %}
+        {% set icon_color = "text-success" if item.name == "Observation" else "text-warning" if item.name == "Condition" else "text-primary" if item.name == "MedicationRequest" else "text-info" if item.name == "Procedure" else "text-danger" if item.name == "AllergyIntolerance" else "text-secondary" %}
+        
+        {{ data_card(title, description, item.count, "files", item.url, icon_class, icon_color) }}
     {% endfor %}
 </div>
 {% endif %}
@@ -127,48 +73,11 @@
 
 <div class="row g-4">
     {% for item in cda_items %}
-    <div class="col-lg-4 col-md-6">
-        <div class="card h-100 shadow-sm hover-shadow border-primary">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">
-                    {% if "vital signs" in item.name.lower() %}
-                        <i class="bi bi-heart-pulse text-danger me-2"></i>
-                    {% elif "laboratory" in item.name.lower() %}
-                        <i class="bi bi-flask text-primary me-2"></i>
-                    {% elif "biometric" in item.name.lower() %}
-                        <i class="bi bi-person-badge text-success me-2"></i>
-                    {% else %}
-                        <i class="bi bi-graph-up text-info me-2"></i>
-                    {% endif %}
-                    {{ item.name }}
-                </h5>
-                
-                <p class="card-text text-muted mb-3">
-                    {% if "vital signs" in item.name.lower() %}
-                        Heart rate, oxygen saturation, respiratory rate from Apple Watch and other devices
-                    {% elif "laboratory" in item.name.lower() %}
-                        Laboratory test results including glucose measurements from Dexcom G7
-                    {% elif "biometric" in item.name.lower() %}
-                        Height, weight, and body measurements
-                    {% else %}
-                        Health observations and measurements
-                    {% endif %}
-                </p>
-                
-                <div class="mt-auto">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-primary fs-6">
-                            {{ "{:,}".format(item.count) }} observations
-                        </span>
-                        <a href="{{ item.url }}" class="btn btn-outline-primary">
-                            Explore
-                            <i class="bi bi-arrow-right ms-1"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        {% set description = "Heart rate, oxygen saturation, respiratory rate from Apple Watch and other devices" if "vital signs" in item.name.lower() else "Laboratory test results including glucose measurements from Dexcom G7" if "laboratory" in item.name.lower() else "Height, weight, and body measurements" if "biometric" in item.name.lower() else "Health observations and measurements" %}
+        {% set icon_class = "bi-heart-pulse" if "vital signs" in item.name.lower() else "bi-flask" if "laboratory" in item.name.lower() else "bi-person-badge" if "biometric" in item.name.lower() else "bi-graph-up" %}
+        {% set icon_color = "text-danger" if "vital signs" in item.name.lower() else "text-primary" if "laboratory" in item.name.lower() else "text-success" if "biometric" in item.name.lower() else "text-info" %}
+        
+        {{ cda_data_card(item.name, description, item.count, "observations", item.url, icon_class, icon_color) }}
     {% endfor %}
 </div>
 {% endif %}
