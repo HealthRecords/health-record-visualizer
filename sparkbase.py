@@ -27,6 +27,7 @@ TODO:    <statusCode code="completed"/>
 """
 import argparse
 import base64
+import os
 import sys
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -359,7 +360,8 @@ def vitals(stats: list[StatInfo], graph_title="Graph", after: Optional[str] = No
     sparks(stats_to_graph, head_styles=[styles], title=graph_title, output_file=output_file, graph=graph)
 
 if __name__ == "__main__":
-    base: Path = Path("export/apple_health_export")
+    base = Path(os.environ.get("HEALTH_DATA_DIR", config.get_source_dir()))
+    # base: Path = Path("export/apple_health_export")
     condition_path: Path = base / "clinical-records"
 
     parser = argparse.ArgumentParser(description="Create an html file containing sparklines")
