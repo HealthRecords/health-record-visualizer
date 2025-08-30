@@ -89,7 +89,7 @@
             <div class="card-body">
                 <h6 class="card-title">
                     <i class="bi bi-bar-chart me-2"></i>
-                    Summary Statistics
+                    Summary Statistics <span id="aggregationMethod" class="text-muted">- loading...</span>
                 </h6>
                 <div id="summaryStats">
                     <div class="d-flex justify-content-center">
@@ -498,96 +498,136 @@ function changePage(page) {
 }
 
 function updateSummaryStats() {
-    if (!filteredData || !Array.isArray(filteredData) || filteredData.length === 0) {
-        document.getElementById('summaryStats').innerHTML = `
-            <p class="text-muted mb-0">No data available for statistics</p>
-        `;
-        return;
+    // Get chart data instead of raw data to match the chart's bucketing
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
+    
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
     }
     
     const recordType = '{{ url_safe_record_type }}';
-    const values = filteredData.map(point => point.value);
-    const count = values.length;
-    const sum = values.reduce((a, b) => a + b, 0);
-    const avg = sum / count;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const unit = filteredData[0]?.unit || '';
+    const chartUrl = `/api/apple/${recordType}/chart?` + params.toString();
     
-    // Determine if this is a cumulative measurement
-    const cumulativeMeasurements = [
-        'stepcount', 'step_count', 'steps',
-        'distancewalking', 'distancerunning', 'distance',
-        'activeenergyburned', 'basalenergyburned', 'energy',
-        'flightscl', 'flights'
-    ];
-    
-    const isCumulative = cumulativeMeasurements.some(cum_type => recordType.includes(cum_type));
-    
-    let statsHtml;
-    if (isCumulative) {
-        // For cumulative measurements, show total instead of average
-        statsHtml = `
-            <div class="row text-center">
-                <div class="col-6 col-md-3">
-                    <div class="border-end">
-                        <h6 class="text-primary mb-1">${count}</h6>
-                        <small class="text-muted">Count</small>
+    fetch(chartUrl)
+        .then(response => response.json())
+        .then(chartData => {
+            if (!chartData.chart_config || !chartData.chart_config.series || chartData.chart_config.series.length === 0) {
+                document.getElementById('summaryStats').innerHTML = `
+                    <p class="text-muted mb-0">No data available for statistics</p>
+                `;
+                return;
+            }
+            
+            const seriesData = chartData.chart_config.series[0].data;
+            if (!seriesData || seriesData.length === 0) {
+                document.getElementById('summaryStats').innerHTML = `
+                    <p class="text-muted mb-0">No data available for statistics</p>
+                `;
+                return;
+            }
+            
+            // Extract values from chart data (second element of each [timestamp, value] pair)
+            const values = seriesData.map(point => point[1]);
+            const count = values.length;
+            const sum = values.reduce((a, b) => a + b, 0);
+            const avg = sum / count;
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            
+            // Get unit from chart config or fallback to first data point
+            const unit = chartData.chart_config.yAxis?.name || (filteredData[0]?.unit) || '';
+            
+            // Get bucket info for proper labeling
+            const bucketLabel = chartData.bucket_info?.bucket_label || 'Data';
+            
+            // Determine if this is a cumulative measurement
+            const cumulativeMeasurements = [
+                'stepcount', 'step_count', 'steps',
+                'distancewalking', 'distancerunning', 'distance',
+                'activeenergyburned', 'basalenergyburned', 'energy',
+                'flightscl', 'flights'
+            ];
+            
+            const isCumulative = cumulativeMeasurements.some(cum_type => recordType.includes(cum_type));
+            
+            // Update the aggregation method in the title
+            document.getElementById('aggregationMethod').textContent = isCumulative ? '- sum' : '- avg';
+            
+            let statsHtml;
+            if (isCumulative) {
+                // For cumulative measurements, show total of bucket sums
+                statsHtml = `
+                    <div class="row text-center">
+                        <div class="col-6 col-md-3">
+                            <div class="border-end">
+                                <h6 class="text-primary mb-1">${count}</h6>
+                                <small class="text-muted">${bucketLabel} periods</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border-end">
+                                <h6 class="text-success mb-1">${sum.toLocaleString()} ${unit}</h6>
+                                <small class="text-muted">Total</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border-end">
+                                <h6 class="text-danger mb-1">${min.toLocaleString()} ${unit}</h6>
+                                <small class="text-muted">Min ${bucketLabel}</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div>
+                                <h6 class="text-warning mb-1">${max.toLocaleString()} ${unit}</h6>
+                                <small class="text-muted">Max ${bucketLabel}</small>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="border-end">
-                        <h6 class="text-success mb-1">${sum.toLocaleString()} ${unit}</h6>
-                        <small class="text-muted">Total</small>
+                `;
+            } else {
+                // For vital signs, show average of bucket averages
+                statsHtml = `
+                    <div class="row text-center">
+                        <div class="col-6 col-md-3">
+                            <div class="border-end">
+                                <h6 class="text-primary mb-1">${count}</h6>
+                                <small class="text-muted">${bucketLabel} periods</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border-end">
+                                <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
+                                <small class="text-muted">Overall Average</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border-end">
+                                <h6 class="text-danger mb-1">${min.toFixed(2)} ${unit}</h6>
+                                <small class="text-muted">Min ${bucketLabel}</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div>
+                                <h6 class="text-warning mb-1">${max.toFixed(2)} ${unit}</h6>
+                                <small class="text-muted">Max ${bucketLabel}</small>
+                            </div>
+                        </div>
                     </div>
+                `;
+            }
+            
+            document.getElementById('summaryStats').innerHTML = statsHtml;
+        })
+        .catch(error => {
+            console.error('Error loading chart data for statistics:', error);
+            document.getElementById('summaryStats').innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Unable to calculate statistics
                 </div>
-                <div class="col-6 col-md-3">
-                    <div class="border-end">
-                        <h6 class="text-danger mb-1">${min} ${unit}</h6>
-                        <small class="text-muted">Minimum</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div>
-                        <h6 class="text-warning mb-1">${max} ${unit}</h6>
-                        <small class="text-muted">Maximum</small>
-                    </div>
-                </div>
-            </div>
-        `;
-    } else {
-        // For vital signs, show average
-        statsHtml = `
-            <div class="row text-center">
-                <div class="col-6 col-md-3">
-                    <div class="border-end">
-                        <h6 class="text-primary mb-1">${count}</h6>
-                        <small class="text-muted">Count</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="border-end">
-                        <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
-                        <small class="text-muted">Average</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="border-end">
-                        <h6 class="text-danger mb-1">${min} ${unit}</h6>
-                        <small class="text-muted">Minimum</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div>
-                        <h6 class="text-warning mb-1">${max} ${unit}</h6>
-                        <small class="text-muted">Maximum</small>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    document.getElementById('summaryStats').innerHTML = statsHtml;
+            `;
+        });
 }
 
 function clearFilters() {
