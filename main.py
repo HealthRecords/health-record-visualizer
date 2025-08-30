@@ -306,20 +306,20 @@ async def observation_category_page(request: Request, category: str):
             for vital, count in sorted(vitals.items(), key=lambda x: x[1], reverse=True)
         ]
         
-        return templates.TemplateResponse(
-            "vitals.html",
-            {
-                "request": request,
-                "vitals": vital_items,
-                "category": display_category,
-                "title": f"{display_category} - Vitals",
-                "breadcrumb": [
-                    {"name": "Home", "url": "/"},
-                    {"name": "Observations", "url": "/observations"},
-                    {"name": display_category, "url": f"/observations/{category}"}
-                ]
-            }
-        )
+        context = {
+            "request": request,
+            "vitals": vital_items,
+            "category": display_category,
+            "title": f"{display_category} - Vitals",
+            "breadcrumb": [
+                {"name": "Home", "url": "/"},
+                {"name": "Observations", "url": "/observations"},
+                {"name": display_category, "url": f"/observations/{category}"}
+            ]
+        }
+        context.update(get_navigation_context())
+        
+        return templates.TemplateResponse("vitals.html", context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading category {category}: {str(e)}")
 
