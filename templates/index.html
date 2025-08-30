@@ -24,14 +24,22 @@
                     </p>
                 </div>
                 {% endif %}
-                {% if has_cda %}
                 <div class="col-md-6">
                     <p class="mb-0">
                         <i class="bi bi-database me-2"></i>
-                        <strong>CDA database</strong> available
+                        {% if has_cda %}
+                            <strong>{{ "{:,}".format(cda_total_records or 0) }}</strong> CDA observations found
+                        {% else %}
+                            <strong>CDA database:</strong>
+                            <span class="text-warning" 
+                                  data-bs-toggle="tooltip" 
+                                  data-bs-placement="top"
+                                  title="Did not find file cda_observations.db. You may need to run preprocess_cda.py. See README.md">
+                                not found. (?)
+                            </span>
+                        {% endif %}
                     </p>
                 </div>
-                {% endif %}
             </div>
             {% endif %}
         </div>

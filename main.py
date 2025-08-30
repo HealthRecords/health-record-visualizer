@@ -74,16 +74,25 @@ async def homepage(request: Request):
         
         # Add CDA data if available
         cda_items = []
+        cda_total_records = 0
         if config.has_cda_database():
-            cda_categories = list_cda_categories()
-            cda_items = [
-                {
-                    "name": f"CDA - {cat.name}",
-                    "count": cat.count,
-                    "url": cat.url
-                }
-                for cat in cda_categories
-            ]
+            try:
+                from health_lib_cda import get_cda_statistics
+                cda_categories = list_cda_categories()
+                cda_items = [
+                    {
+                        "name": f"CDA - {cat.name}",
+                        "count": cat.count,
+                        "url": cat.url
+                    }
+                    for cat in cda_categories
+                ]
+                # Get total CDA record count
+                cda_stats = get_cda_statistics()
+                cda_total_records = cda_stats.get("total_observations", 0)
+            except Exception as e:
+                # If there's any issue getting CDA stats, fall back to 0
+                cda_total_records = 0
         
         return templates.TemplateResponse(
             "index.html", 
@@ -93,7 +102,8 @@ async def homepage(request: Request):
                 "cda_items": cda_items,
                 "title": "Health Data Explorer",
                 "total_files": sum(prefixes.values()),
-                "has_cda": config.has_cda_database()
+                "has_cda": config.has_cda_database(),
+                "cda_total_records": cda_total_records
             }
         )
     except Exception as e:
