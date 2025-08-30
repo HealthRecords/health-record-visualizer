@@ -124,13 +124,14 @@ async def homepage(request: Request):
                 import sqlite3
                 
                 stats_start = time.time()
-                # Just get total count - much faster than full statistics
+                # Use sqlite_sequence for instant count - much faster than COUNT(*)
                 conn = sqlite3.connect(config.get_apple_health_database_path())
-                cursor = conn.execute("SELECT COUNT(*) as total FROM apple_health_records")
-                apple_health_total_records = cursor.fetchone()[0]
+                cursor = conn.execute("SELECT seq FROM sqlite_sequence WHERE name='apple_health_records'")
+                result = cursor.fetchone()
+                apple_health_total_records = result[0] if result else 0
                 conn.close()
                 stats_time = time.time() - stats_start
-                print(f"🕐   Apple Health count query took: {stats_time:.2f}s")
+                print(f"🕐   Apple Health count query (sqlite_sequence) took: {stats_time:.2f}s")
                 
                 categories_start = time.time()
                 # Get Apple Health categories for cards

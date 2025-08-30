@@ -106,6 +106,8 @@ def create_database_schema(conn: sqlite3.Connection):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_records_type ON apple_health_records(type)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_records_date ON apple_health_records(start_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_records_source ON apple_health_records(source_name)")
+    # Covering index for categories query - optimizes GROUP BY type with COUNT(*)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_records_type_covering ON apple_health_records(type, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_activity_date ON activity_summaries(date_components)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_workouts_date ON workouts(start_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_metadata_record ON metadata_entries(record_type, record_id)")
