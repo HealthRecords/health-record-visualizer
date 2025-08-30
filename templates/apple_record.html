@@ -505,6 +505,7 @@ function updateSummaryStats() {
         return;
     }
     
+    const recordType = '{{ url_safe_record_type }}';
     const values = filteredData.map(point => point.value);
     const count = values.length;
     const sum = values.reduce((a, b) => a + b, 0);
@@ -513,34 +514,78 @@ function updateSummaryStats() {
     const max = Math.max(...values);
     const unit = filteredData[0]?.unit || '';
     
-    const statsHtml = `
-        <div class="row text-center">
-            <div class="col-6 col-md-3">
-                <div class="border-end">
-                    <h6 class="text-primary mb-1">${count}</h6>
-                    <small class="text-muted">Count</small>
+    // Determine if this is a cumulative measurement
+    const cumulativeMeasurements = [
+        'stepcount', 'step_count', 'steps',
+        'distancewalking', 'distancerunning', 'distance',
+        'activeenergyburned', 'basalenergyburned', 'energy',
+        'flightscl', 'flights'
+    ];
+    
+    const isCumulative = cumulativeMeasurements.some(cum_type => recordType.includes(cum_type));
+    
+    let statsHtml;
+    if (isCumulative) {
+        // For cumulative measurements, show total instead of average
+        statsHtml = `
+            <div class="row text-center">
+                <div class="col-6 col-md-3">
+                    <div class="border-end">
+                        <h6 class="text-primary mb-1">${count}</h6>
+                        <small class="text-muted">Count</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border-end">
+                        <h6 class="text-success mb-1">${sum.toLocaleString()} ${unit}</h6>
+                        <small class="text-muted">Total</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border-end">
+                        <h6 class="text-danger mb-1">${min} ${unit}</h6>
+                        <small class="text-muted">Minimum</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div>
+                        <h6 class="text-warning mb-1">${max} ${unit}</h6>
+                        <small class="text-muted">Maximum</small>
+                    </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="border-end">
-                    <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
-                    <small class="text-muted">Average</small>
+        `;
+    } else {
+        // For vital signs, show average
+        statsHtml = `
+            <div class="row text-center">
+                <div class="col-6 col-md-3">
+                    <div class="border-end">
+                        <h6 class="text-primary mb-1">${count}</h6>
+                        <small class="text-muted">Count</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border-end">
+                        <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
+                        <small class="text-muted">Average</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border-end">
+                        <h6 class="text-danger mb-1">${min} ${unit}</h6>
+                        <small class="text-muted">Minimum</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div>
+                        <h6 class="text-warning mb-1">${max} ${unit}</h6>
+                        <small class="text-muted">Maximum</small>
+                    </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="border-end">
-                    <h6 class="text-danger mb-1">${min} ${unit}</h6>
-                    <small class="text-muted">Minimum</small>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div>
-                    <h6 class="text-warning mb-1">${max} ${unit}</h6>
-                    <small class="text-muted">Maximum</small>
-                </div>
-            </div>
-        </div>
-    `;
+        `;
+    }
     
     document.getElementById('summaryStats').innerHTML = statsHtml;
 }
