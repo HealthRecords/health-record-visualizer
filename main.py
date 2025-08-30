@@ -96,6 +96,11 @@ async def homepage(request: Request):
         if config.has_cda_database():
             try:
                 from health_lib_cda import get_cda_statistics
+                
+                categories_start = time.time()
+                # Log CDA categories query
+                print("🔍 CDA categories query:")
+                print("   SELECT category, COUNT(*) as count FROM cda_observations GROUP BY category ORDER BY count DESC")
                 cda_categories = list_cda_categories()
                 cda_items = [
                     {
@@ -105,9 +110,21 @@ async def homepage(request: Request):
                     }
                     for cat in cda_categories
                 ]
-                # Get total CDA record count
+                categories_time = time.time() - categories_start
+                print(f"🕐   CDA categories query took: {categories_time:.2f}s")
+                
+                # Get total CDA record count - log what this function actually does
+                stats_start = time.time()
+                print("🔍 CDA stats queries (get_cda_statistics function):")
+                print("   1. SELECT COUNT(*) as total FROM cda_observations")
+                print("   2. SELECT MIN(date) as min_date, MAX(date) as max_date FROM cda_observations")
+                print("   3. SELECT source_name, COUNT(*) as count FROM cda_observations GROUP BY source_name ORDER BY count DESC")
+                print("   4. SELECT category, COUNT(*) as count FROM cda_observations GROUP BY category ORDER BY count DESC")
                 cda_stats = get_cda_statistics()
                 cda_total_records = cda_stats.get("total_observations", 0)
+                stats_time = time.time() - stats_start
+                print(f"🕐   CDA stats query took: {stats_time:.2f}s")
+                
             except Exception as e:
                 # If there's any issue getting CDA stats, fall back to 0
                 cda_total_records = 0
