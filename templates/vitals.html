@@ -172,8 +172,10 @@ function previewData(category, vital) {
     // Set modal title
     modalTitle.innerHTML = `<i class="bi bi-eye me-2"></i>Preview: ${vital}`;
     
-    // Set full chart URL for button
-    currentPreviewUrl = `/observations/${category.toLowerCase().replace(' ', '-')}/${vital.toLowerCase().replace(' ', '-')}`;
+    // Set full chart URL for button - preserve case and URL encode properly
+    const categoryUrl = category.toLowerCase().replace(' ', '-');
+    const vitalUrl = encodeURIComponent(vital);
+    currentPreviewUrl = `/observations/${categoryUrl}/${vitalUrl}`;
     viewFullButton.onclick = () => window.location.href = currentPreviewUrl;
     
     // Show loading spinner
@@ -187,8 +189,8 @@ function previewData(category, vital) {
     
     modal.show();
     
-    // Fetch preview data
-    const apiUrl = `/api/observations/${category.toLowerCase().replace(' ', '-')}/${vital.toLowerCase().replace(' ', '-')}/data`;
+    // Fetch preview data - preserve case and URL encode properly
+    const apiUrl = `/api/observations/${categoryUrl}/${vitalUrl}/data`;
     
     fetch(apiUrl)
         .then(response => response.json())
