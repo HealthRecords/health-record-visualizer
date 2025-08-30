@@ -518,9 +518,27 @@ function updateSummaryStats() {
     const count = values.length;
     const sum = values.reduce((a, b) => a + b, 0);
     const avg = sum / count;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
     const unit = filteredData[0]?.unit || '';
+    
+    // Find min and max values with their corresponding dates
+    let minValue = Infinity;
+    let maxValue = -Infinity;
+    let minDate = '';
+    let maxDate = '';
+    
+    filteredData.forEach(point => {
+        if (point.value < minValue) {
+            minValue = point.value;
+            minDate = new Date(point.date).toLocaleDateString();
+        }
+        if (point.value > maxValue) {
+            maxValue = point.value;
+            maxDate = new Date(point.date).toLocaleDateString();
+        }
+    });
+    
+    const min = minValue;
+    const max = maxValue;
     
     const statsHtml = `
         <div class="row text-center">
@@ -538,13 +556,13 @@ function updateSummaryStats() {
             </div>
             <div class="col-6 col-md-3">
                 <div class="border-end">
-                    <h6 class="text-danger mb-1">${min} ${unit}</h6>
+                    <h6 class="text-danger mb-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Occurred on ${minDate}">${min} ${unit}</h6>
                     <small class="text-muted">Minimum</small>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div>
-                    <h6 class="text-warning mb-1">${max} ${unit}</h6>
+                    <h6 class="text-warning mb-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Occurred on ${maxDate}">${max} ${unit}</h6>
                     <small class="text-muted">Maximum</small>
                 </div>
             </div>
@@ -552,6 +570,12 @@ function updateSummaryStats() {
     `;
     
     document.getElementById('summaryStats').innerHTML = statsHtml;
+    
+    // Initialize tooltips for the new elements
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('#summaryStats [data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 }
 
 function clearFilters() {
