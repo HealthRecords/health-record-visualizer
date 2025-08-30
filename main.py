@@ -1453,7 +1453,13 @@ async def get_cda_chart_data_endpoint(
         else:
             # Bucket the data
             series_data = process_bucketed_data(rows, bucket_size)
-            subtitle = f"Grouped by {bucket_info['label']} ({len(list(series_data.values())[0]) if series_data else 0:,} points from {total_points:,} raw points)"
+            # Count unique time buckets (not sum of points across sources)
+            unique_timestamps = set()
+            for source_data in series_data.values():
+                for timestamp, value in source_data:
+                    unique_timestamps.add(timestamp)
+            total_bucketed_points = len(unique_timestamps)
+            subtitle = f"Grouped by {bucket_info['label']} ({total_bucketed_points:,} points from {total_points:,} raw points)"
         
         # Create ECharts series configuration
         series = []
