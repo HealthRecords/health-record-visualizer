@@ -72,7 +72,12 @@ def get_navigation_context():
 @app.get("/", response_class=HTMLResponse)
 async def homepage(request: Request):
     """Homepage with main navigation menu"""
+    import time
+    start_time = time.time()
+    
     try:
+        # FHIR data loading
+        fhir_start = time.time()
         _, clinical_path = get_health_paths()
         prefixes = list_prefixes(clinical_path)
         
@@ -81,8 +86,11 @@ async def homepage(request: Request):
             {"name": prefix, "count": count, "url": get_menu_url(prefix)}
             for prefix, count in prefixes.items()
         ]
+        fhir_time = time.time() - fhir_start
+        print(f"🕐 FHIR data loading took: {fhir_time:.2f}s")
         
         # Add CDA data if available
+        cda_start = time.time()
         cda_items = []
         cda_total_records = 0
         if config.has_cda_database():
@@ -103,18 +111,33 @@ async def homepage(request: Request):
             except Exception as e:
                 # If there's any issue getting CDA stats, fall back to 0
                 cda_total_records = 0
+        cda_time = time.time() - cda_start
+        print(f"🕐 CDA data loading took: {cda_time:.2f}s")
         
         # Add Apple Health data if available
+        apple_start = time.time()
         apple_health_items = []
         apple_health_total_records = 0
         if config.has_apple_health_database():
             try:
-                from health_lib_apple import get_apple_health_statistics, list_apple_health_categories
-                apple_stats = get_apple_health_statistics()
-                apple_health_total_records = apple_stats.get("total_records", 0)
+                from health_lib_apple import list_apple_health_categories
+                import sqlite3
                 
+                stats_start = time.time()
+                # Just get total count - much faster than full statistics
+                conn = sqlite3.connect(config.get_apple_health_database_path())
+                cursor = conn.execute("SELECT COUNT(*) as total FROM apple_health_records")
+                apple_health_total_records = cursor.fetchone()[0]
+                conn.close()
+                stats_time = time.time() - stats_start
+                print(f"🕐   Apple Health count query took: {stats_time:.2f}s")
+                
+                categories_start = time.time()
                 # Get Apple Health categories for cards
                 apple_categories = list_apple_health_categories()
+                categories_time = time.time() - categories_start
+                print(f"🕐   Apple Health categories query took: {categories_time:.2f}s")
+                
                 # Show top 6 categories on homepage
                 apple_health_items = [
                     {
@@ -129,8 +152,11 @@ async def homepage(request: Request):
             except Exception as e:
                 # If there's any issue getting Apple Health stats, fall back to 0
                 apple_health_total_records = 0
+        apple_time = time.time() - apple_start
+        print(f"🕐 Apple Health data loading took: {apple_time:.2f}s")
         
         # Build template context with navigation
+        context_start = time.time()
         context = {
             "request": request, 
             "menu_items": menu_items,
@@ -144,6 +170,12 @@ async def homepage(request: Request):
             "apple_health_total_records": apple_health_total_records
         }
         context.update(get_navigation_context())
+        context_time = time.time() - context_start
+        print(f"🕐 Context building took: {context_time:.2f}s")
+        
+        total_time = time.time() - start_time
+        print(f"🕐 TOTAL HOMEPAGE LOAD TIME: {total_time:.2f}s")
+        print(f"🔍 Breakdown: FHIR={fhir_time:.2f}s, CDA={cda_time:.2f}s, Apple={apple_time:.2f}s, Context={context_time:.2f}s")
         
         return templates.TemplateResponse("index.html", context)
     except Exception as e:
@@ -1786,20 +1818,48 @@ async def get_apple_health_chart(record_type: str, after: Optional[str] = None, 
                 LIMIT 5000
             """
         else:
-            # Aggregated query  
-            query = f"""
-                SELECT 
-                    strftime('{bucket_format}', start_date) as time_bucket,
-                    AVG(value) as avg_value,
-                    MIN(value) as min_value,
-                    MAX(value) as max_value,
-                    COUNT(*) as count,
-                    unit
-                FROM apple_health_records 
-                WHERE {where_clause}
-                GROUP BY time_bucket, unit
-                ORDER BY time_bucket
-            """
+            # Determine aggregation method based on measurement type
+            # Step count, distance, energy should be summed
+            # Heart rate, temperature, oxygen saturation should be averaged
+            cumulative_measurements = [
+                'stepcount', 'step_count', 'steps',
+                'distancewalking', 'distancerunning', 'distance',
+                'activeenergyburned', 'basalenergyburned', 'energy',
+                'flightscl', 'flights'
+            ]
+            
+            is_cumulative = any(cum_type in record_type.lower() for cum_type in cumulative_measurements)
+            
+            if is_cumulative:
+                # Aggregated query with SUM for cumulative measurements
+                query = f"""
+                    SELECT 
+                        strftime('{bucket_format}', start_date) as time_bucket,
+                        SUM(value) as avg_value,
+                        MIN(value) as min_value,
+                        MAX(value) as max_value,
+                        COUNT(*) as count,
+                        unit
+                    FROM apple_health_records 
+                    WHERE {where_clause}
+                    GROUP BY time_bucket, unit
+                    ORDER BY time_bucket
+                """
+            else:
+                # Aggregated query with AVG for vital signs
+                query = f"""
+                    SELECT 
+                        strftime('{bucket_format}', start_date) as time_bucket,
+                        AVG(value) as avg_value,
+                        MIN(value) as min_value,
+                        MAX(value) as max_value,
+                        COUNT(*) as count,
+                        unit
+                    FROM apple_health_records 
+                    WHERE {where_clause}
+                    GROUP BY time_bucket, unit
+                    ORDER BY time_bucket
+                """
         
         cursor = conn.execute(query, params)
         rows = cursor.fetchall()
@@ -1826,10 +1886,20 @@ async def get_apple_health_chart(record_type: str, after: Optional[str] = None, 
             else:
                 chart_data.append([row['time_bucket'], row['avg_value']])
         
+        # Determine if this measurement type is cumulative for display purposes
+        cumulative_measurements = [
+            'stepcount', 'step_count', 'steps',
+            'distancewalking', 'distancerunning', 'distance', 
+            'activeenergyburned', 'basalenergyburned', 'energy',
+            'flightscl', 'flights'
+        ]
+        is_cumulative = any(cum_type in record_type.lower() for cum_type in cumulative_measurements)
+        aggregation_type = "summed" if is_cumulative else "averaged"
+        
         chart_config = {
             "title": {
                 "text": display_info.get('display_name', record_type),
-                "subtext": f"{len(chart_data)} {bucket_label.lower()} data points from {total_count:,} raw measurements"
+                "subtext": f"{len(chart_data)} {bucket_label.lower()} data points ({aggregation_type}) from {total_count:,} raw measurements"
             },
             "tooltip": {
                 "trigger": "axis",
