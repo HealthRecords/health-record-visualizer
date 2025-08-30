@@ -18,68 +18,157 @@
                     {{ display_name }}
                 </h1>
                 <p class="text-muted mb-0">
-                    Apple Health measurements
+                    Apple Health measurement data and trends
                 </p>
+            </div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary" onclick="exportData('csv')">
+                    <i class="bi bi-download me-1"></i>
+                    Export CSV
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="exportData('json')">
+                    <i class="bi bi-download me-1"></i>
+                    Export JSON
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Chart Container -->
+<!-- Controls Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-sliders me-2"></i>
+                    Filter Options
+                </h6>
+                <form id="filterForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="dateAfter" class="form-label">After Date</label>
+                            <input type="date" class="form-control" id="dateAfter" name="after">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="dateBefore" class="form-label">Before Date</label>
+                            <input type="date" class="form-control" id="dateBefore" name="before">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="sourceFilter" class="form-label">Data Source</label>
+                            <select class="form-control" id="sourceFilter" name="source">
+                                <option value="">All Sources</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bucketFilter" class="form-label">
+                                Time Grouping 
+                                <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Data is automatically grouped for performance. Current selection shows the chosen grouping interval."></i>
+                            </label>
+                            <select class="form-control" id="bucketFilter" name="bucket">
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel me-1"></i>
+                                Apply Filters
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-bar-chart me-2"></i>
+                    Summary Statistics
+                </h6>
+                <div id="summaryStats">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Row -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up me-2"></i>
+                    {{ display_name }} Trends
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="chartContainer" style="width: 100%; height: 400px;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading chart...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table Row -->
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-graph-up me-2"></i>
-                        {{ display_name }} Over Time
-                    </h5>
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimeRange('7d')">7 Days</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimeRange('30d')">30 Days</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimeRange('90d')">90 Days</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm active" onclick="setTimeRange('all')">All Time</button>
-                    </div>
-                </div>
-                
-                <div id="loading" class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading chart...</span>
-                    </div>
-                </div>
-                
-                <div id="chart" style="height: 400px; display: none;"></div>
-                
-                <div id="error" class="alert alert-danger" style="display: none;" role="alert">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <span id="error-message"></span>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-table me-2"></i>
+                    Data Points
+                </h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="showAllData">
+                    <label class="form-check-label" for="showAllData">
+                        Show all data
+                    </label>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Data Export -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
             <div class="card-body">
-                <h5 class="card-title">
-                    <i class="bi bi-download me-2"></i>
-                    Export Data
-                </h5>
-                <p class="text-muted">Download your {{ display_name }} data for analysis</p>
-                <div class="btn-group">
-                    <button class="btn btn-outline-primary" onclick="exportData('json')">
-                        <i class="bi bi-file-earmark-code me-1"></i>
-                        JSON
-                    </button>
-                    <button class="btn btn-outline-primary" onclick="exportData('csv')">
-                        <i class="bi bi-filetype-csv me-1"></i>
-                        CSV
-                    </button>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Value</th>
+                                <th>Unit</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading data...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
+                <nav aria-label="Data pagination" id="paginationNav" style="display: none;">
+                    <ul class="pagination justify-content-center" id="pagination">
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -88,140 +177,408 @@
 
 {% block scripts %}
 <script>
-let chart;
-let currentTimeRange = 'all';
-const recordType = "{{ record_type }}";
+let currentData = [];
+let filteredData = [];
+let chart = null;
+const itemsPerPage = 50;
+let currentPage = 1;
 
-document.addEventListener('DOMContentLoaded', function() {
-    chart = echarts.init(document.getElementById('chart'));
-    loadChart();
+// Global error handler
+window.addEventListener('error', function(e) {
+    console.error('JavaScript Error:', e.error);
+    showError(`JavaScript Error: ${e.message} at line ${e.lineno}`);
 });
 
-function setTimeRange(range) {
-    // Update active button
-    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('Unhandled Promise Rejection:', e.reason);
+    showError(`Promise Error: ${e.reason}`);
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        loadSourceOptions();
+        loadData();
+        
+        // Initialize Bootstrap tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Filter form submission
+        document.getElementById('filterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            loadData();
+        });
+        
+        // Show all data toggle
+        document.getElementById('showAllData').addEventListener('change', function() {
+            updateDataTable();
+        });
+    } catch (error) {
+        console.error('Initialization Error:', error);
+        showError(`Initialization Error: ${error.message}`);
+    }
+});
+
+function loadSourceOptions() {
+    const recordType = '{{ url_safe_record_type }}';
     
-    currentTimeRange = range;
-    loadChart();
+    fetch(`/api/apple/${recordType}/sources`)
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('sourceFilter');
+            data.sources.forEach(source => {
+                const option = document.createElement('option');
+                option.value = source;
+                option.textContent = source;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.log('Could not load source options:', error);
+        });
 }
 
-function loadChart() {
-    const loading = document.getElementById('loading');
-    const chartElement = document.getElementById('chart');
-    const errorElement = document.getElementById('error');
+function loadBucketOptions(availableBuckets, currentBucket) {
+    const select = document.getElementById('bucketFilter');
     
-    loading.style.display = 'block';
-    chartElement.style.display = 'none';
-    errorElement.style.display = 'none';
+    // Clear all existing options
+    select.innerHTML = '';
     
-    // Build API URL with time range
-    let apiUrl = `/api/apple/${recordType}/chart`;
-    
-    if (currentTimeRange !== 'all') {
-        const now = new Date();
-        let daysBack;
-        
-        switch(currentTimeRange) {
-            case '7d': daysBack = 7; break;
-            case '30d': daysBack = 30; break;
-            case '90d': daysBack = 90; break;
-        }
-        
-        const after = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
-        apiUrl += `?after=${after.toISOString()}`;
+    if (availableBuckets) {
+        availableBuckets.forEach(bucket => {
+            const option = document.createElement('option');
+            option.value = bucket.value;
+            option.textContent = bucket.label;
+            option.disabled = !bucket.enabled;
+            if (!bucket.enabled) {
+                option.textContent += ' (too many points)';
+                option.style.color = '#999';
+            }
+            // Set the current bucket as selected
+            if (bucket.value === currentBucket) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
     }
+}
+
+function loadData() {
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
+    
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    const recordType = '{{ url_safe_record_type }}';
+    const apiUrl = `/api/apple/${recordType}/data?` + params.toString();
+    
+    // Show loading states
+    showChartLoading();
+    showTableLoading();
+    showStatsLoading();
     
     fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-            loading.style.display = 'none';
+            console.log('API Response:', data);
+            currentData = data;
+            filteredData = data.data ? [...data.data] : [];
             
-            if (data.chart_config) {
-                chartElement.style.display = 'block';
-                chart.setOption(data.chart_config);
-                
-                // Resize chart when window resizes
-                window.addEventListener('resize', () => chart.resize());
-            } else {
-                showError('No chart data available');
-            }
+            updateChart();
+            updateDataTable();
+            updateSummaryStats();
         })
         .catch(error => {
-            loading.style.display = 'none';
-            showError('Error loading chart: ' + error.message);
+            console.error('Error loading data:', error);
+            showError('Failed to load data: ' + error.message);
         });
 }
 
-function showError(message) {
-    const errorElement = document.getElementById('error');
-    const errorMessage = document.getElementById('error-message');
+function showChartLoading() {
+    document.getElementById('chartContainer').innerHTML = `
+        <div class="d-flex justify-content-center align-items-center h-100">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading chart...</span>
+            </div>
+        </div>
+    `;
+}
+
+function showTableLoading() {
+    document.getElementById('dataTableBody').innerHTML = `
+        <tr>
+            <td colspan="5" class="text-center">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading data...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function showStatsLoading() {
+    document.getElementById('summaryStats').innerHTML = `
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+}
+
+function updateChart() {
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
     
-    errorMessage.textContent = message;
-    errorElement.style.display = 'block';
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    const recordType = '{{ url_safe_record_type }}';
+    const chartUrl = `/api/apple/${recordType}/chart?` + params.toString();
+    
+    fetch(chartUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(chartData => {
+            try {
+                const chartContainer = document.getElementById('chartContainer');
+                
+                if (chart) {
+                    try {
+                        chart.dispose();
+                    } catch (e) {
+                        console.log('Error disposing chart:', e);
+                    }
+                    chart = null;
+                }
+                
+                chartContainer.innerHTML = '';
+                
+                if (typeof echarts === 'undefined') {
+                    throw new Error('ECharts library is not loaded');
+                }
+                
+                if (!chartData.chart_config) {
+                    throw new Error('No chart configuration received');
+                }
+                
+                // Update bucket options based on current data
+                if (chartData.bucket_info) {
+                    loadBucketOptions(chartData.bucket_info.available_buckets, chartData.bucket_info.bucket_size);
+                    
+                    // Show bucket information
+                    console.log(`Chart loaded: ${chartData.bucket_info.total_raw_points.toLocaleString()} raw points, grouped by ${chartData.bucket_info.bucket_label}`);
+                }
+                
+                console.log('Initializing chart with', Object.keys(chartData.chart_config).length, 'config keys');
+                chart = echarts.init(chartContainer);
+                
+                console.log('Setting chart options...');
+                chart.setOption(chartData.chart_config);
+                console.log('Chart options set successfully');
+                
+                setTimeout(() => {
+                    if (chart) {
+                        chart.resize();
+                        console.log('Chart resized');
+                    }
+                }, 100);
+                
+                window.addEventListener('resize', function() {
+                    if (chart) {
+                        chart.resize();
+                    }
+                });
+            } catch (error) {
+                console.error('Error in chart processing:', error);
+                throw error; // Re-throw to be caught by the outer catch
+            }
+        })
+        .catch(error => {
+            console.error('Chart error:', error);
+            document.getElementById('chartContainer').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error loading chart: ${error.message}
+                </div>
+            `;
+        });
+}
+
+function updateDataTable() {
+    const showAll = document.getElementById('showAllData').checked;
+    const dataToShow = showAll ? filteredData : filteredData.slice(0, itemsPerPage);
+    
+    const tbody = document.getElementById('dataTableBody');
+    
+    if (dataToShow.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No data points found
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    dataToShow.forEach(point => {
+        const date = new Date(point.date);
+        const dateStr = date.toLocaleDateString();
+        const timeStr = date.toLocaleTimeString();
+        
+        html += `
+            <tr>
+                <td>${dateStr}</td>
+                <td>${timeStr}</td>
+                <td><strong>${point.value}</strong></td>
+                <td>${point.unit || ''}</td>
+                <td>${point.source_name}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    
+    if (!showAll && filteredData.length > itemsPerPage) {
+        setupPagination();
+        document.getElementById('paginationNav').style.display = 'block';
+    } else {
+        document.getElementById('paginationNav').style.display = 'none';
+    }
+}
+
+function setupPagination() {
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const pagination = document.getElementById('pagination');
+    
+    let html = '';
+    
+    html += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
+        </li>
+    `;
+    
+    for (let i = 1; i <= totalPages; i++) {
+        html += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `;
+    }
+    
+    html += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
+        </li>
+    `;
+    
+    pagination.innerHTML = html;
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    updateDataTable();
+}
+
+function updateSummaryStats() {
+    if (!filteredData || !Array.isArray(filteredData) || filteredData.length === 0) {
+        document.getElementById('summaryStats').innerHTML = `
+            <p class="text-muted mb-0">No data available for statistics</p>
+        `;
+        return;
+    }
+    
+    const values = filteredData.map(point => point.value);
+    const count = values.length;
+    const sum = values.reduce((a, b) => a + b, 0);
+    const avg = sum / count;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const unit = filteredData[0]?.unit || '';
+    
+    const statsHtml = `
+        <div class="row text-center">
+            <div class="col-6 col-md-3">
+                <div class="border-end">
+                    <h6 class="text-primary mb-1">${count}</h6>
+                    <small class="text-muted">Count</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="border-end">
+                    <h6 class="text-success mb-1">${avg.toFixed(2)} ${unit}</h6>
+                    <small class="text-muted">Average</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="border-end">
+                    <h6 class="text-danger mb-1">${min} ${unit}</h6>
+                    <small class="text-muted">Minimum</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div>
+                    <h6 class="text-warning mb-1">${max} ${unit}</h6>
+                    <small class="text-muted">Maximum</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('summaryStats').innerHTML = statsHtml;
+}
+
+function clearFilters() {
+    document.getElementById('filterForm').reset();
+    loadData();
 }
 
 function exportData(format) {
-    let apiUrl = `/api/apple/${recordType}/data`;
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams();
     
-    if (currentTimeRange !== 'all') {
-        const now = new Date();
-        let daysBack;
-        
-        switch(currentTimeRange) {
-            case '7d': daysBack = 7; break;
-            case '30d': daysBack = 30; break;
-            case '90d': daysBack = 90; break;
-        }
-        
-        const after = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
-        apiUrl += `?after=${after.toISOString()}`;
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
     }
     
-    fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-            let content, filename, mimeType;
-            
-            if (format === 'json') {
-                content = JSON.stringify(data, null, 2);
-                filename = `apple_health_${recordType}_${currentTimeRange}.json`;
-                mimeType = 'application/json';
-            } else if (format === 'csv') {
-                // Convert to CSV
-                if (data.data && data.data.length > 0) {
-                    const headers = Object.keys(data.data[0]);
-                    const csvRows = [headers.join(',')];
-                    
-                    data.data.forEach(row => {
-                        const values = headers.map(header => {
-                            const value = row[header];
-                            return typeof value === 'string' ? `"${value}"` : value;
-                        });
-                        csvRows.push(values.join(','));
-                    });
-                    
-                    content = csvRows.join('\n');
-                } else {
-                    content = 'No data available';
-                }
-                
-                filename = `apple_health_${recordType}_${currentTimeRange}.csv`;
-                mimeType = 'text/csv';
-            }
-            
-            // Create and trigger download
-            const blob = new Blob([content], { type: mimeType });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            window.URL.revokeObjectURL(url);
-        })
-        .catch(error => {
-            alert('Error exporting data: ' + error.message);
-        });
+    params.append('format', format);
+    
+    const recordType = '{{ url_safe_record_type }}';
+    const exportUrl = `/api/apple/${recordType}/data?` + params.toString();
+    
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = `{{ display_name|replace(' ', '_') }}_data.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function showError(message) {
+    const chartContainer = document.getElementById('chartContainer');
+    chartContainer.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
 }
 </script>
 {% endblock %}

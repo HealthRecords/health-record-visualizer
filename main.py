@@ -65,7 +65,8 @@ def get_navigation_context():
     prefixes = list_prefixes(clinical_path)
     return {
         "has_fhir_data": len(prefixes) > 0,
-        "has_cda_data": config.has_cda_database()
+        "has_cda_data": config.has_cda_database(),
+        "has_apple_health_data": config.has_apple_health_database()
     }
 
 @app.get("/", response_class=HTMLResponse)
@@ -103,15 +104,44 @@ async def homepage(request: Request):
                 # If there's any issue getting CDA stats, fall back to 0
                 cda_total_records = 0
         
+        # Add Apple Health data if available
+        apple_health_items = []
+        apple_health_total_records = 0
+        if config.has_apple_health_database():
+            try:
+                from health_lib_apple import get_apple_health_statistics, list_apple_health_categories
+                apple_stats = get_apple_health_statistics()
+                apple_health_total_records = apple_stats.get("total_records", 0)
+                
+                # Get Apple Health categories for cards
+                apple_categories = list_apple_health_categories()
+                # Show top 6 categories on homepage
+                apple_health_items = [
+                    {
+                        "name": cat.display_name,
+                        "count": cat.count,
+                        "url": cat.url,
+                        "icon_class": cat.icon_class,
+                        "icon_color": cat.icon_color
+                    }
+                    for cat in apple_categories[:6]  # Top 6 most common
+                ]
+            except Exception as e:
+                # If there's any issue getting Apple Health stats, fall back to 0
+                apple_health_total_records = 0
+        
         # Build template context with navigation
         context = {
             "request": request, 
             "menu_items": menu_items,
             "cda_items": cda_items,
+            "apple_health_items": apple_health_items,
             "title": "Health Data Explorer",
             "total_files": sum(prefixes.values()),
             "has_cda": config.has_cda_database(),
-            "cda_total_records": cda_total_records
+            "cda_total_records": cda_total_records,
+            "has_apple_health": config.has_apple_health_database(),
+            "apple_health_total_records": apple_health_total_records
         }
         context.update(get_navigation_context())
         
@@ -1445,6 +1475,427 @@ async def get_cda_chart_data_endpoint(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading chart data: {str(e)}")
+
+
+# Apple Health endpoints
+@app.get("/apple", response_class=HTMLResponse)
+async def apple_health_overview(request: Request):
+    """Apple Health overview page showing all record types"""
+    if not config.has_apple_health_database():
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "Apple Health database not found. Please run the preprocessor first.",
+            "suggestion": "Run: python preprocess_apple_health.py /path/to/export.xml"
+        })
+    
+    from health_lib_apple import list_apple_health_categories
+    categories = list_apple_health_categories()
+    
+    context = {
+        "request": request,
+        "categories": categories,
+        "title": "Apple Health Data"
+    }
+    context.update(get_navigation_context())
+    return templates.TemplateResponse("apple_overview.html", context)
+
+
+@app.get("/apple/{record_type}", response_class=HTMLResponse) 
+async def apple_health_record_page(request: Request, record_type: str):
+    """Apple Health specific record type page with chart"""
+    if not config.has_apple_health_database():
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "Apple Health database not found",
+            "suggestion": "Run the Apple Health preprocessor first"
+        })
+    
+    # Convert URL-safe record type back to original
+    from health_lib_apple import get_record_type_mapping
+    type_mapping = get_record_type_mapping()
+    
+    # Find the actual record type
+    actual_record_type = None
+    for key, info in type_mapping.items():
+        if key.lower().replace('hkquantitytypeidentifier', '').replace('hkcategorytypeidentifier', '') == record_type:
+            actual_record_type = key
+            break
+    
+    if not actual_record_type:
+        # Try direct match
+        for key in type_mapping.keys():
+            if key.lower() == record_type.lower():
+                actual_record_type = key
+                break
+    
+    if not actual_record_type:
+        raise HTTPException(status_code=404, detail=f"Record type not found: {record_type}")
+    
+    display_info = type_mapping.get(actual_record_type, {
+        'display_name': actual_record_type.replace('HKQuantityTypeIdentifier', '').replace('HKCategoryTypeIdentifier', '')
+    })
+    
+    # Create URL-safe version for API calls
+    url_safe_record_type = actual_record_type.lower().replace('hkquantitytypeidentifier', '').replace('hkcategorytypeidentifier', '')
+    
+    context = {
+        "request": request,
+        "record_type": actual_record_type,
+        "url_safe_record_type": url_safe_record_type,
+        "display_name": display_info.get('display_name', record_type),
+        "title": f"Apple Health - {display_info.get('display_name', record_type)}"
+    }
+    context.update(get_navigation_context())
+    return templates.TemplateResponse("apple_record.html", context)
+
+
+@app.get("/api/apple/{record_type}/data")
+async def get_apple_health_data(record_type: str, after: Optional[str] = None, before: Optional[str] = None, 
+                               source: Optional[str] = None, limit: Optional[int] = 1000, format: Optional[str] = None):
+    """Get Apple Health data for a specific record type"""
+    if not config.has_apple_health_database():
+        raise HTTPException(status_code=404, detail="Apple Health database not found")
+    
+    try:
+        from health_lib_apple import get_record_type_mapping
+        import sqlite3
+        from fastapi.responses import Response
+        import csv
+        import json
+        import io
+        
+        # Convert URL-safe record type back to original if needed
+        type_mapping = get_record_type_mapping()
+        
+        actual_record_type = None
+        for key, info in type_mapping.items():
+            if key.lower().replace('hkquantitytypeidentifier', '').replace('hkcategorytypeidentifier', '') == record_type:
+                actual_record_type = key
+                break
+        
+        if not actual_record_type:
+            actual_record_type = record_type
+            
+        conn = sqlite3.connect(config.get_apple_health_database_path())
+        conn.row_factory = sqlite3.Row
+        
+        # Build WHERE clause for filtering
+        where_conditions = ["type = ? AND value IS NOT NULL"]
+        params = [actual_record_type]
+        
+        if after:
+            where_conditions.append("start_date >= ?")
+            params.append(after)
+        if before:
+            where_conditions.append("start_date <= ?") 
+            params.append(before)
+        if source:
+            where_conditions.append("source_name = ?")
+            params.append(source)
+            
+        where_clause = " AND ".join(where_conditions)
+        
+        query = f"""
+            SELECT start_date as date, value, unit, source_name, creation_date
+            FROM apple_health_records 
+            WHERE {where_clause}
+            ORDER BY start_date DESC
+            LIMIT ?
+        """
+        params.append(limit)
+        
+        cursor = conn.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Convert to list of dicts
+        data_points = []
+        for row in rows:
+            data_points.append({
+                "date": row['date'],
+                "value": row['value'],
+                "unit": row['unit'],
+                "source_name": row['source_name'],
+                "creation_date": row['creation_date']
+            })
+        
+        # Handle export formats
+        if format == 'csv':
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=['date', 'value', 'unit', 'source_name', 'creation_date'])
+            writer.writeheader()
+            writer.writerows(data_points)
+            
+            return Response(
+                content=output.getvalue(),
+                media_type='text/csv',
+                headers={'Content-Disposition': f'attachment; filename="{record_type}_data.csv"'}
+            )
+        elif format == 'json':
+            return Response(
+                content=json.dumps(data_points, indent=2),
+                media_type='application/json',
+                headers={'Content-Disposition': f'attachment; filename="{record_type}_data.json"'}
+            )
+        
+        return {
+            "record_type": actual_record_type,
+            "count": len(data_points),
+            "data": data_points
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting Apple Health data: {str(e)}")
+
+
+@app.get("/api/apple/{record_type}/sources")
+async def get_apple_health_sources(record_type: str):
+    """Get available data sources for a specific Apple Health record type"""
+    if not config.has_apple_health_database():
+        raise HTTPException(status_code=404, detail="Apple Health database not found")
+    
+    try:
+        from health_lib_apple import get_record_type_mapping
+        import sqlite3
+        
+        # Convert URL-safe record type back to original if needed  
+        type_mapping = get_record_type_mapping()
+        
+        actual_record_type = None
+        for key, info in type_mapping.items():
+            if key.lower().replace('hkquantitytypeidentifier', '').replace('hkcategorytypeidentifier', '') == record_type:
+                actual_record_type = key
+                break
+        
+        if not actual_record_type:
+            actual_record_type = record_type
+        
+        conn = sqlite3.connect(config.get_apple_health_database_path())
+        cursor = conn.execute(
+            "SELECT DISTINCT source_name FROM apple_health_records WHERE type = ? ORDER BY source_name",
+            [actual_record_type]
+        )
+        
+        sources = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return {"sources": sources}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading sources: {str(e)}")
+
+
+@app.get("/api/apple/{record_type}/chart") 
+async def get_apple_health_chart(record_type: str, after: Optional[str] = None, before: Optional[str] = None, 
+                                source: Optional[str] = None, bucket: Optional[str] = None):
+    """Get ECharts configuration for Apple Health data with CDA-style bucketing and filtering"""
+    if not config.has_apple_health_database():
+        raise HTTPException(status_code=404, detail="Apple Health database not found")
+    
+    try:
+        from health_lib_apple import get_record_type_mapping
+        import sqlite3
+        from datetime import datetime
+        
+        # Convert URL-safe record type back to original if needed  
+        type_mapping = get_record_type_mapping()
+        
+        actual_record_type = None
+        for key, info in type_mapping.items():
+            if key.lower().replace('hkquantitytypeidentifier', '').replace('hkcategorytypeidentifier', '') == record_type:
+                actual_record_type = key
+                break
+        
+        if not actual_record_type:
+            actual_record_type = record_type
+        
+        display_info = type_mapping.get(actual_record_type, {
+            'display_name': actual_record_type.replace('HKQuantityTypeIdentifier', '').replace('HKCategoryTypeIdentifier', '')
+        })
+        
+        conn = sqlite3.connect(config.get_apple_health_database_path())
+        conn.row_factory = sqlite3.Row
+        
+        # Build WHERE clause for filtering
+        where_conditions = ["type = ? AND value IS NOT NULL"]
+        params = [actual_record_type]
+        
+        if after:
+            where_conditions.append("start_date >= ?")
+            params.append(after)
+        if before:
+            where_conditions.append("start_date <= ?") 
+            params.append(before)
+        if source:
+            where_conditions.append("source_name = ?")
+            params.append(source)
+            
+        where_clause = " AND ".join(where_conditions)
+        
+        # Get total count for bucket determination
+        count_query = f"SELECT COUNT(*) as count FROM apple_health_records WHERE {where_clause}"
+        cursor = conn.execute(count_query, params)
+        total_count = cursor.fetchone()['count']
+        
+        # Determine bucket based on data volume - same logic as CDA
+        available_buckets = [
+            {"value": "raw", "label": "Individual Points", "enabled": total_count <= 5000},
+            {"value": "minute", "label": "Per Minute", "enabled": total_count <= 20000}, 
+            {"value": "hour", "label": "Hourly", "enabled": total_count <= 50000},
+            {"value": "day", "label": "Daily", "enabled": True},
+            {"value": "week", "label": "Weekly", "enabled": True},
+            {"value": "month", "label": "Monthly", "enabled": True}
+        ]
+        
+        # Use provided bucket or auto-select
+        if not bucket:
+            for b in available_buckets:
+                if b["enabled"]:
+                    bucket = b["value"]
+                    break
+        
+        # Set bucket format
+        bucket_formats = {
+            "raw": None,
+            "minute": '%Y-%m-%d %H:%M:00',
+            "hour": '%Y-%m-%d %H:00:00', 
+            "day": '%Y-%m-%d',
+            "week": '%Y-%W',
+            "month": '%Y-%m'
+        }
+        
+        bucket_labels = {
+            "raw": "Individual",
+            "minute": "Per Minute",
+            "hour": "Hourly",
+            "day": "Daily", 
+            "week": "Weekly",
+            "month": "Monthly"
+        }
+        
+        bucket_format = bucket_formats.get(bucket, '%Y-%m-%d')
+        bucket_label = bucket_labels.get(bucket, "Daily")
+        
+        if bucket == "raw":
+            # Raw data query
+            query = f"""
+                SELECT start_date as time_bucket, value as avg_value, unit
+                FROM apple_health_records 
+                WHERE {where_clause}
+                ORDER BY start_date
+                LIMIT 5000
+            """
+        else:
+            # Aggregated query  
+            query = f"""
+                SELECT 
+                    strftime('{bucket_format}', start_date) as time_bucket,
+                    AVG(value) as avg_value,
+                    MIN(value) as min_value,
+                    MAX(value) as max_value,
+                    COUNT(*) as count,
+                    unit
+                FROM apple_health_records 
+                WHERE {where_clause}
+                GROUP BY time_bucket, unit
+                ORDER BY time_bucket
+            """
+        
+        cursor = conn.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            return {
+                "chart_config": {"title": {"text": "No data available"}},
+                "bucket_info": {
+                    "available_buckets": available_buckets,
+                    "bucket_size": bucket,
+                    "bucket_label": bucket_label,
+                    "total_raw_points": total_count
+                }
+            }
+        
+        # Prepare chart data
+        unit = rows[0]['unit'] if rows else ''
+        chart_data = []
+        
+        for row in rows:
+            if bucket == "raw":
+                chart_data.append([row['time_bucket'], row['avg_value']])
+            else:
+                chart_data.append([row['time_bucket'], row['avg_value']])
+        
+        chart_config = {
+            "title": {
+                "text": display_info.get('display_name', record_type),
+                "subtext": f"{len(chart_data)} {bucket_label.lower()} data points from {total_count:,} raw measurements"
+            },
+            "tooltip": {
+                "trigger": "axis",
+                "axisPointer": {"type": "cross"},
+                "formatter": f"{{b}}<br/>{{a}}: {{c}} {unit}"
+            },
+            "xAxis": {
+                "type": "time" if bucket in ["raw", "minute", "hour", "day"] else "category",
+                "boundaryGap": False
+            },
+            "yAxis": {
+                "type": "value",
+                "name": unit,
+                "nameLocation": "middle",
+                "nameGap": 50
+            },
+            "series": [{
+                "name": display_info.get('display_name', record_type),
+                "type": "line",
+                "smooth": True,
+                "data": chart_data,
+                "emphasis": {"focus": "series"},
+                "lineStyle": {"width": 2},
+                "itemStyle": {"borderWidth": 2}
+            }],
+            "dataZoom": [
+                {
+                    "type": "inside",
+                    "start": 0,
+                    "end": 100,
+                    "filterMode": "filter"
+                },
+                {
+                    "start": 0,
+                    "end": 100,
+                    "handleIcon": "M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
+                    "handleSize": "80%",
+                    "handleStyle": {
+                        "color": "#fff",
+                        "shadowBlur": 3,
+                        "shadowColor": "rgba(0, 0, 0, 0.6)",
+                        "shadowOffsetX": 2,
+                        "shadowOffsetY": 2
+                    }
+                }
+            ],
+            "grid": {
+                "left": "3%",
+                "right": "4%",
+                "bottom": "15%",
+                "containLabel": True
+            }
+        }
+        
+        return {
+            "chart_config": chart_config,
+            "bucket_info": {
+                "available_buckets": available_buckets,
+                "bucket_size": bucket,
+                "bucket_label": bucket_label,
+                "total_raw_points": total_count
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating chart: {str(e)}")
 
 
 if __name__ == "__main__":

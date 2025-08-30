@@ -13,33 +13,33 @@
                 Explore your Apple Health data exports with an interactive web interface.
                 Navigate through observations, conditions, medications, and procedures.
             </p>
-            {% if total_files or has_cda %}
+            {% if total_files or has_cda or has_apple_health %}
             <hr class="my-4">
             <div class="row">
                 {% if total_files %}
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <p class="mb-0">
                         <i class="bi bi-files me-2"></i>
                         <strong>{{ total_files }}</strong> FHIR data files found
                     </p>
                 </div>
                 {% endif %}
-                <div class="col-md-6">
+                {% if has_cda %}
+                <div class="col-md-4">
                     <p class="mb-0">
                         <i class="bi bi-database me-2"></i>
-                        {% if has_cda %}
-                            <strong>{{ "{:,}".format(cda_total_records or 0) }}</strong> CDA observations found
-                        {% else %}
-                            <strong>CDA database:</strong>
-                            <span class="text-warning" 
-                                  data-bs-toggle="tooltip" 
-                                  data-bs-placement="top"
-                                  title="Did not find file cda_observations.db. You may need to run preprocess_cda.py. See README.md">
-                                not found. (?)
-                            </span>
-                        {% endif %}
+                        <strong>{{ "{:,}".format(cda_total_records or 0) }}</strong> CDA observations found
                     </p>
                 </div>
+                {% endif %}
+                {% if has_apple_health %}
+                <div class="col-md-4">
+                    <p class="mb-0">
+                        <i class="bi bi-heart-pulse me-2"></i>
+                        <strong>{{ "{:,}".format(apple_health_total_records or 0) }}</strong> Apple Health records found
+                    </p>
+                </div>
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -90,14 +90,40 @@
 </div>
 {% endif %}
 
-{% if not menu_items and not cda_items %}
+{% if apple_health_items %}
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-heart-pulse text-success me-2"></i>
+            Apple Health Data
+            <small class="text-muted ms-2">(from export.xml)</small>
+        </h2>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for item in apple_health_items %}
+        {{ data_card(
+            item.name, 
+            "Health measurements from your Apple devices", 
+            item.count, 
+            "records", 
+            item.url, 
+            item.icon_class, 
+            item.icon_color
+        ) }}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not menu_items and not cda_items and not apple_health_items %}
 <div class="row">
     <div class="col-12">
         <div class="alert alert-warning" role="alert">
             <i class="bi bi-exclamation-triangle me-2"></i>
             <strong>No health data found!</strong>
             <p class="mb-0 mt-2">
-                Please ensure your Apple Health export data is available in the configured directory.
+                Please ensure your health export data is available in the configured directory.
                 Check the <code>config.py</code> file to verify the data path.
             </p>
         </div>
