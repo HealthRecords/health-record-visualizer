@@ -30,6 +30,16 @@ def has_cda_database() -> bool:
     """Check if CDA database exists"""
     return get_cda_database_path().exists()
 
+
+def get_apple_health_database_path() -> Path:
+    """Get path to Apple Health database"""
+    return Path("apple_health.db")
+
+
+def has_apple_health_database() -> bool:
+    """Check if Apple Health database exists"""
+    return get_apple_health_database_path().exists()
+
 import re
 import unicodedata
 

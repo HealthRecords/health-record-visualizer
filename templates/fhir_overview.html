@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "macros.html" import data_card %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white rounded p-5 mb-4">
+            <h1 class="display-4">
+                <i class="bi bi-heart-pulse me-3"></i>
+                Your Health Data
+            </h1>
+            <p class="lead">
+                FHIR format health records from your Apple Health export.
+                View detailed information about observations, conditions, medications, and procedures.
+            </p>
+            {% if total_files %}
+            <hr class="my-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">
+                        <i class="bi bi-files me-2"></i>
+                        <strong>{{ total_files }}</strong> FHIR data files found
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if menu_items %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-list-ul me-2"></i>
+            Available Record Types
+        </h2>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for item in menu_items %}
+        {% set title = "Medications" if item.name == "MedicationRequest" else "Allergies" if item.name == "AllergyIntolerance" else "Documents" if item.name == "DocumentReference" else item.name + "s" %}
+        {% set description = "Vital signs, measurements, and laboratory results" if item.name == "Observation" else "Medical conditions and diagnoses" if item.name == "Condition" else "Prescribed medications and treatments" if item.name == "MedicationRequest" else "Medical procedures and interventions" if item.name == "Procedure" else "Allergies and intolerances" if item.name == "AllergyIntolerance" else "Clinical documents and reports" if item.name == "DocumentReference" else item.name + " records" %}
+        {% set icon_class = "bi-activity" if item.name == "Observation" else "bi-clipboard2-pulse" if item.name == "Condition" else "bi-capsule" if item.name == "MedicationRequest" else "bi-bandaid" if item.name == "Procedure" else "bi-exclamation-triangle" if item.name == "AllergyIntolerance" else "bi-file-earmark-medical" %}
+        {% set icon_color = "text-success" if item.name == "Observation" else "text-warning" if item.name == "Condition" else "text-primary" if item.name == "MedicationRequest" else "text-info" if item.name == "Procedure" else "text-danger" if item.name == "AllergyIntolerance" else "text-secondary" %}
+        
+        {{ data_card(title, description, item.count, "files", item.url, icon_class, icon_color) }}
+    {% endfor %}
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>No FHIR data found!</strong>
+            <p class="mb-0 mt-2">
+                Please ensure your Apple Health export data is available in the configured directory.
+                Check the <code>config.py</code> file to verify the data path.
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "macros.html" import data_card %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-success text-white rounded p-5 mb-4">
+            <h1 class="display-4">
+                <i class="bi bi-heart-pulse me-3"></i>
+                Apple Health Data
+            </h1>
+            <p class="lead">
+                Your complete Apple Health export data including step counts, heart rate, workouts,
+                and all health measurements from your iPhone and Apple Watch.
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if categories %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-list-ul me-2"></i>
+            Available Health Measurements
+        </h2>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for category in categories %}
+        {{ data_card(
+            category.display_name, 
+            "Health measurements from Apple Health", 
+            category.count, 
+            "records", 
+            category.url, 
+            category.icon_class, 
+            category.icon_color
+        ) }}
+    {% endfor %}
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>No Apple Health data found!</strong>
+            <p class="mb-0 mt-2">
+                Please ensure you have processed your Apple Health export.xml file.
+                Run: <code>python preprocess_apple_health.py /path/to/export.xml</code>
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

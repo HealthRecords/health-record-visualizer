@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/apple">Apple Health Data</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ display_name }}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2">
+                    <i class="bi bi-heart-pulse text-success me-2"></i>
+                    {{ display_name }}
+                </h1>
+                <p class="text-muted mb-0">
+                    Apple Health measurements
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Container -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-graph-up me-2"></i>
+                        {{ display_name }} Over Time
+                    </h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimeRange('7d')">7 Days</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimeRange('30d')">30 Days</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimeRange('90d')">90 Days</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm active" onclick="setTimeRange('all')">All Time</button>
+                    </div>
+                </div>
+                
+                <div id="loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading chart...</span>
+                    </div>
+                </div>
+                
+                <div id="chart" style="height: 400px; display: none;"></div>
+                
+                <div id="error" class="alert alert-danger" style="display: none;" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <span id="error-message"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Export -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-download me-2"></i>
+                    Export Data
+                </h5>
+                <p class="text-muted">Download your {{ display_name }} data for analysis</p>
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary" onclick="exportData('json')">
+                        <i class="bi bi-file-earmark-code me-1"></i>
+                        JSON
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="exportData('csv')">
+                        <i class="bi bi-filetype-csv me-1"></i>
+                        CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chart;
+let currentTimeRange = 'all';
+const recordType = "{{ record_type }}";
+
+document.addEventListener('DOMContentLoaded', function() {
+    chart = echarts.init(document.getElementById('chart'));
+    loadChart();
+});
+
+function setTimeRange(range) {
+    // Update active button
+    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    currentTimeRange = range;
+    loadChart();
+}
+
+function loadChart() {
+    const loading = document.getElementById('loading');
+    const chartElement = document.getElementById('chart');
+    const errorElement = document.getElementById('error');
+    
+    loading.style.display = 'block';
+    chartElement.style.display = 'none';
+    errorElement.style.display = 'none';
+    
+    // Build API URL with time range
+    let apiUrl = `/api/apple/${recordType}/chart`;
+    
+    if (currentTimeRange !== 'all') {
+        const now = new Date();
+        let daysBack;
+        
+        switch(currentTimeRange) {
+            case '7d': daysBack = 7; break;
+            case '30d': daysBack = 30; break;
+            case '90d': daysBack = 90; break;
+        }
+        
+        const after = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+        apiUrl += `?after=${after.toISOString()}`;
+    }
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            
+            if (data.chart_config) {
+                chartElement.style.display = 'block';
+                chart.setOption(data.chart_config);
+                
+                // Resize chart when window resizes
+                window.addEventListener('resize', () => chart.resize());
+            } else {
+                showError('No chart data available');
+            }
+        })
+        .catch(error => {
+            loading.style.display = 'none';
+            showError('Error loading chart: ' + error.message);
+        });
+}
+
+function showError(message) {
+    const errorElement = document.getElementById('error');
+    const errorMessage = document.getElementById('error-message');
+    
+    errorMessage.textContent = message;
+    errorElement.style.display = 'block';
+}
+
+function exportData(format) {
+    let apiUrl = `/api/apple/${recordType}/data`;
+    
+    if (currentTimeRange !== 'all') {
+        const now = new Date();
+        let daysBack;
+        
+        switch(currentTimeRange) {
+            case '7d': daysBack = 7; break;
+            case '30d': daysBack = 30; break;
+            case '90d': daysBack = 90; break;
+        }
+        
+        const after = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+        apiUrl += `?after=${after.toISOString()}`;
+    }
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            let content, filename, mimeType;
+            
+            if (format === 'json') {
+                content = JSON.stringify(data, null, 2);
+                filename = `apple_health_${recordType}_${currentTimeRange}.json`;
+                mimeType = 'application/json';
+            } else if (format === 'csv') {
+                // Convert to CSV
+                if (data.data && data.data.length > 0) {
+                    const headers = Object.keys(data.data[0]);
+                    const csvRows = [headers.join(',')];
+                    
+                    data.data.forEach(row => {
+                        const values = headers.map(header => {
+                            const value = row[header];
+                            return typeof value === 'string' ? `"${value}"` : value;
+                        });
+                        csvRows.push(values.join(','));
+                    });
+                    
+                    content = csvRows.join('\n');
+                } else {
+                    content = 'No data available';
+                }
+                
+                filename = `apple_health_${recordType}_${currentTimeRange}.csv`;
+                mimeType = 'text/csv';
+            }
+            
+            // Create and trigger download
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            alert('Error exporting data: ' + error.message);
+        });
+}
+</script>
+{% endblock %}
