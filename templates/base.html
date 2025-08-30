@@ -37,26 +37,20 @@
                             <i class="bi bi-house me-1"></i>Home
                         </a>
                     </li>
+                    {% if has_fhir_data %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/observations">
-                            <i class="bi bi-activity me-1"></i>Observations
+                        <a class="nav-link" href="/fhir">
+                            <i class="bi bi-heart-pulse me-1"></i>Your Health Data
                         </a>
                     </li>
+                    {% endif %}
+                    {% if has_cda_data %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/conditions">
-                            <i class="bi bi-clipboard2-pulse me-1"></i>Conditions
+                        <a class="nav-link" href="/cda">
+                            <i class="bi bi-database me-1"></i>CDA Health Data
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/medications">
-                            <i class="bi bi-capsule me-1"></i>Medications
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/procedures">
-                            <i class="bi bi-bandaid me-1"></i>Procedures
-                        </a>
-                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

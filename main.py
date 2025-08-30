@@ -59,6 +59,15 @@ def get_health_paths():
     clinical_path = base_path / "clinical-records"
     return base_path, clinical_path
 
+def get_navigation_context():
+    """Get navigation context for all templates"""
+    _, clinical_path = get_health_paths()
+    prefixes = list_prefixes(clinical_path)
+    return {
+        "has_fhir_data": len(prefixes) > 0,
+        "has_cda_data": config.has_cda_database()
+    }
+
 @app.get("/", response_class=HTMLResponse)
 async def homepage(request: Request):
     """Homepage with main navigation menu"""
@@ -94,20 +103,46 @@ async def homepage(request: Request):
                 # If there's any issue getting CDA stats, fall back to 0
                 cda_total_records = 0
         
-        return templates.TemplateResponse(
-            "index.html", 
-            {
-                "request": request, 
-                "menu_items": menu_items,
-                "cda_items": cda_items,
-                "title": "Health Data Explorer",
-                "total_files": sum(prefixes.values()),
-                "has_cda": config.has_cda_database(),
-                "cda_total_records": cda_total_records
-            }
-        )
+        # Build template context with navigation
+        context = {
+            "request": request, 
+            "menu_items": menu_items,
+            "cda_items": cda_items,
+            "title": "Health Data Explorer",
+            "total_files": sum(prefixes.values()),
+            "has_cda": config.has_cda_database(),
+            "cda_total_records": cda_total_records
+        }
+        context.update(get_navigation_context())
+        
+        return templates.TemplateResponse("index.html", context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading homepage: {str(e)}")
+
+@app.get("/fhir", response_class=HTMLResponse)
+async def fhir_page(request: Request):
+    """FHIR data overview page showing all FHIR resource types"""
+    try:
+        _, clinical_path = get_health_paths()
+        prefixes = list_prefixes(clinical_path)
+        
+        # Convert to list of dicts for template
+        menu_items = [
+            {"name": prefix, "count": count, "url": get_menu_url(prefix)}
+            for prefix, count in prefixes.items()
+        ]
+        
+        context = {
+            "request": request,
+            "menu_items": menu_items,
+            "title": "Your Health Data - FHIR Records",
+            "total_files": sum(prefixes.values())
+        }
+        context.update(get_navigation_context())
+        
+        return templates.TemplateResponse("fhir_overview.html", context)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading FHIR data: {str(e)}")
 
 def get_menu_url(prefix: str) -> str:
     """Generate appropriate URL for each data type"""
@@ -146,16 +181,16 @@ async def observations_page(request: Request):
             for category in categories
         ]
         
-        return templates.TemplateResponse(
-            "observations.html",
-            {
-                "request": request,
-                "categories": category_items,
-                "title": "Observations",
-                "file_count": file_count,
-                "breadcrumb": [{"name": "Home", "url": "/"}, {"name": "Observations", "url": "/observations"}]
-            }
-        )
+        context = {
+            "request": request,
+            "categories": category_items,
+            "title": "Observations",
+            "file_count": file_count,
+            "breadcrumb": [{"name": "Home", "url": "/"}, {"name": "Observations", "url": "/observations"}]
+        }
+        context.update(get_navigation_context())
+        
+        return templates.TemplateResponse("observations.html", context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading observations: {str(e)}")
 
@@ -895,11 +930,13 @@ async def cda_overview(request: Request):
         })
     
     categories = list_cda_categories()
-    return templates.TemplateResponse("cda_overview.html", {
+    context = {
         "request": request,
         "categories": categories,
         "title": "CDA Health Data"
-    })
+    }
+    context.update(get_navigation_context())
+    return templates.TemplateResponse("cda_overview.html", context)
 
 
 @app.get("/api/cda/categories")
@@ -939,12 +976,14 @@ async def cda_category_page(request: Request, category: str):
     
     observation_types = list_cda_observation_types(category_name)
     
-    return templates.TemplateResponse("cda_category.html", {
+    context = {
         "request": request,
         "category": category_name,
         "observation_types": observation_types,
         "title": f"CDA - {category_name}"
-    })
+    }
+    context.update(get_navigation_context())
+    return templates.TemplateResponse("cda_category.html", context)
 
 
 @app.get("/api/cda/{category}")
@@ -997,12 +1036,14 @@ async def cda_observation_page(request: Request, category: str, observation_name
     # URL decode observation name
     observation_name = observation_name.replace('%20', ' ')
     
-    return templates.TemplateResponse("cda_observation.html", {
+    context = {
         "request": request,
         "category": category_name,
         "observation_name": observation_name,
         "title": f"CDA - {observation_name}"
-    })
+    }
+    context.update(get_navigation_context())
+    return templates.TemplateResponse("cda_observation.html", context)
 
 
 @app.get("/api/cda/{category}/{observation_name}/data")
