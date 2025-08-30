@@ -6,3 +6,4 @@ __pycache__/
 sparklines.html
 output/
 synthea_test_data/*
+cda_observations.db
