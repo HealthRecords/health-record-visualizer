@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import data_card, cda_data_card %}
+{% from "macros.html" import data_card, cda_data_card, view_all_button %}
 
 {% block content %}
 <div class="row">
@@ -51,13 +51,13 @@
     <div class="col-12">
         <h2 class="mb-4">
             <i class="bi bi-heart-pulse me-2"></i>
-            Your Health Data
+            <a href="/fhir" class="text-decoration-none">Your Health Data</a>
         </h2>
     </div>
 </div>
 
 <div class="row g-4">
-    {% for item in menu_items %}
+    {% for item in menu_items[:3] %}
         {% set title = "Medications" if item.name == "MedicationRequest" else "Allergies" if item.name == "AllergyIntolerance" else "Documents" if item.name == "DocumentReference" else item.name + "s" %}
         {% set description = "Vital signs, measurements, and laboratory results" if item.name == "Observation" else "Medical conditions and diagnoses" if item.name == "Condition" else "Prescribed medications and treatments" if item.name == "MedicationRequest" else "Medical procedures and interventions" if item.name == "Procedure" else "Allergies and intolerances" if item.name == "AllergyIntolerance" else "Clinical documents and reports" if item.name == "DocumentReference" else item.name + " records" %}
         {% set icon_class = "bi-activity" if item.name == "Observation" else "bi-clipboard2-pulse" if item.name == "Condition" else "bi-capsule" if item.name == "MedicationRequest" else "bi-bandaid" if item.name == "Procedure" else "bi-exclamation-triangle" if item.name == "AllergyIntolerance" else "bi-file-earmark-medical" %}
@@ -66,6 +66,10 @@
         {{ data_card(title, description, item.count, "files", item.url, icon_class, icon_color) }}
     {% endfor %}
 </div>
+
+{% if menu_items|length > 3 %}
+{{ view_all_button("/fhir", menu_items|length) }}
+{% endif %}
 {% endif %}
 
 {% if cda_items %}
@@ -73,14 +77,14 @@
     <div class="col-12">
         <h2 class="mb-4">
             <i class="bi bi-file-earmark-medical text-primary me-2"></i>
-            CDA Health Data
+            <a href="/cda" class="text-decoration-none">CDA Health Data</a>
             <small class="text-muted ms-2">(Clinical Document Architecture)</small>
         </h2>
     </div>
 </div>
 
 <div class="row g-4">
-    {% for item in cda_items %}
+    {% for item in cda_items[:3] %}
         {% set description = "Heart rate, oxygen saturation, respiratory rate from Apple Watch and other devices" if "vital signs" in item.name.lower() else "Laboratory test results including glucose measurements from Dexcom G7" if "laboratory" in item.name.lower() else "Height, weight, and body measurements" if "biometric" in item.name.lower() else "Health observations and measurements" %}
         {% set icon_class = "bi-heart-pulse" if "vital signs" in item.name.lower() else "bi-flask" if "laboratory" in item.name.lower() else "bi-person-badge" if "biometric" in item.name.lower() else "bi-graph-up" %}
         {% set icon_color = "text-danger" if "vital signs" in item.name.lower() else "text-primary" if "laboratory" in item.name.lower() else "text-success" if "biometric" in item.name.lower() else "text-info" %}
@@ -88,6 +92,10 @@
         {{ cda_data_card(item.name, description, item.count, "observations", item.url, icon_class, icon_color) }}
     {% endfor %}
 </div>
+
+{% if cda_items|length > 3 %}
+{{ view_all_button("/cda", cda_items|length) }}
+{% endif %}
 {% endif %}
 
 {% if apple_health_items %}
@@ -95,14 +103,14 @@
     <div class="col-12">
         <h2 class="mb-4">
             <i class="bi bi-heart-pulse text-success me-2"></i>
-            Apple Health Data
+            <a href="/apple" class="text-decoration-none">Apple Health Data</a>
             <small class="text-muted ms-2">(from export.xml)</small>
         </h2>
     </div>
 </div>
 
 <div class="row g-4">
-    {% for item in apple_health_items %}
+    {% for item in apple_health_items[:3] %}
         {{ data_card(
             item.name, 
             "Health measurements from your Apple devices", 
@@ -114,6 +122,10 @@
         ) }}
     {% endfor %}
 </div>
+
+{% if apple_health_items|length > 3 %}
+{{ view_all_button("/apple", apple_health_items|length) }}
+{% endif %}
 {% endif %}
 
 {% if not menu_items and not cda_items and not apple_health_items %}

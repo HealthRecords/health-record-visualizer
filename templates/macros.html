@@ -32,3 +32,15 @@
 {% macro cda_data_card(title, description, count, count_label, url, icon_class="bi-graph-up", icon_color="text-info", button_text="Explore") %}
 {{ data_card(title, description, count, count_label, url, icon_class, icon_color, button_text, "cda") }}
 {% endmacro %}
+
+{# Shared "View All" button macro #}
+{% macro view_all_button(url, total_count) %}
+<div class="row mt-3">
+    <div class="col-12 text-center">
+        <a href="{{ url }}" class="btn btn-outline-primary">
+            <i class="bi bi-plus-circle me-2"></i>
+            View All {{ total_count }}
+        </a>
+    </div>
+</div>
+{% endmacro %}
