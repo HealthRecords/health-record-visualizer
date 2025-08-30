@@ -1,4 +1,4 @@
-# Harvey - Health Record Visualizer 
+# HaRVey - Health Record Visualizer 
 
 <b>H</b>a<b>R</b><b>V</b>ey - is a project to allow you to inspect and graph your health records. 
 It features interactive charts, data filtering, and visualization of your health data.
@@ -64,7 +64,14 @@ It features interactive charts, data filtering, and visualization of your health
    source_dir = Path("/path/to/your/apple_health_export")
    ```
 
-5. **Start the server:**
+5. **Import CDA data:**
+   
+   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance.
+   ```bash
+   python preprocess_cda.py "/path/to/your/apple_health_export/export_cda.xml"
+   ```
+   
+6. **Start the server:**
    ```bash
    # Option 1: Using the startup script (recommended)
    python start_server.py
@@ -73,7 +80,7 @@ It features interactive charts, data filtering, and visualization of your health
    python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
-6. **Open your browser:**
+7. **Open your browser:**
    
    Navigate to http://localhost:8000
 
