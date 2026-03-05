@@ -359,6 +359,14 @@ def process_xml_file(xml_path: Path, db_path: Path):
     
     return True
 
+def get_default_source_path():
+    xml_path = config.get_source_dir() / "export.xml"
+    return xml_path
+
+def get_default_db_path():
+    db_path = config.get_source_dir() / "apple_health.db"
+    return db_path
+
 
 def main():
     parser = argparse.ArgumentParser(description="Process Apple Health export.xml file.")
@@ -370,15 +378,18 @@ def main():
     if args.xml_file:
         xml_path = Path(args.xml_file)
     else:
-        xml_path = config.get_source_dir() / "export.xml"
+        xml_path = get_default_source_path()
 
     if not xml_path.exists():
         print(f"Error: XML file not found: {xml_path}")
         sys.exit(1)
-    
-    db_path = Path(args.db)
-    
-    success = process_xml_file(xml_path, db_path)
+
+    if args.db:
+        apple_data_db_path = args.db
+    else:
+        apple_data_db_path = get_default_db_path()
+
+    success = process_xml_file(xml_path, apple_data_db_path)
     if not success:
         sys.exit(1)
 

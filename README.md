@@ -64,10 +64,13 @@ It features interactive charts, data filtering, and visualization of your health
    source_dir = Path("/path/to/your/apple_health_export")
    ```
 
-5. **Import CDA data:**
-   
-   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance.
-   The path to this file is configured in config.py, or can be passed as an argument. Use --help for info.
+5. **Import data:**
+   ```bash
+   python preprocess_cda.py
+   ```
+   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance,
+   this also loads the Apple Health data. If you want to control the paths or batch sizes, see preprocess_cda.py and preprocess_appple_health.py. This program just calls them with default arguments.
+   The path to this file is configured in config.py.
    ```bash
    python preprocess_cda.py
    ```

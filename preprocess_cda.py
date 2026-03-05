@@ -14,7 +14,7 @@ from typing import Optional, Generator
 import time
 
 import config
-from xml_reader import get_test_results, trim, find
+from xml_reader import trim, find
 import xml.etree.ElementTree as ET
 import unicodedata
 from health_lib import Observation, ValueQuantity
@@ -100,7 +100,8 @@ def get_all_observations(file_name: str) -> Generator[Observation, None, None]:
                         dt_string = None
 
             if find(element_stack, ["component", "observation"]):
-                if ob is not None and value is not None and unit is not None and dt_string is not None and source_name is not None:
+                if (ob is not None and value is not None and unit is not None and dt_string is not None and
+                        source_name is not None):
                     vq = ValueQuantity(value, unit, ob.name)
                     ob.data = [vq]
                     ob.filename = file_name
@@ -269,6 +270,32 @@ def get_database_stats(db_path: Path) -> None:
     
     conn.close()
 
+def process_cda_file_with_cleanup(cda_file, db_path: Path, batch_size: int = 1000) -> None:
+    try:
+        process_cda_file(cda_file, db_path, batch_size)
+        print("\nDatabase statistics:")
+        get_database_stats(db_path)
+    except KeyboardInterrupt:
+        print("\nInterrupted by user")
+        if db_path.exists():
+            db_path.unlink()
+        sys.exit(1)
+    except Exception as e:
+        print(f"\nError: {e}")
+        if db_path.exists():
+            db_path.unlink()
+        sys.exit(1)
+
+def get_default_cda_path() -> Path:
+    cda_file = "export_cda.xml"  # The file we are importing data from.
+    source_dir = config.get_source_dir()
+    if not source_dir:
+        print("No source dir found in config.py. Must be as an arg with --cda_file or configured in config.py")
+        sys.exit(1)
+    return source_dir / cda_file
+
+def get_db_file_path():
+    return Path("cda_observations.db")
 
 def main():
     cda_file = "export_cda.xml"  # The file we are importing data from.
@@ -278,7 +305,7 @@ def main():
                         "\n\tRequired for import (the default), not for stats." +
                         "\n\tDefaults to the source_dir value in config.py")
     parser.add_argument("-d", "--database", help="Output SQLite database file",
-                       default="cda_observations.db")
+                       default=get_db_file_path())
     parser.add_argument("--stats", action="store_true", 
                        help="Show statistics for existing database")
     parser.add_argument("--batch-size", type=int, default=1000,
@@ -295,11 +322,7 @@ def main():
     if args.cda_file:
         cda_file = Path(args.cda_file)
     else:
-        source_dir = config.get_source_dir()
-        if not source_dir:
-            print("No source dir found in config.py. Must be as an arg with --cda_file or configured in config.py")
-            sys.exit(1)
-        cda_file = source_dir / cda_file
+        cda_file = get_default_cda_path()
         if not cda_file.exists():
             print("No CDA XML file provided for import. Must be as an arg with --cda_file or configured in config.py")
             sys.exit(1)
@@ -313,21 +336,8 @@ def main():
             print("Cancelled.")
             sys.exit(3)
         db_path.unlink()
-    
-    try:
-        process_cda_file(cda_file, db_path, args.batch_size)
-        print("\nDatabase statistics:")
-        get_database_stats(db_path)
-    except KeyboardInterrupt:
-        print("\nInterrupted by user")
-        if db_path.exists():
-            db_path.unlink()
-        sys.exit(1)
-    except Exception as e:
-        print(f"\nError: {e}")
-        if db_path.exists():
-            db_path.unlink()
-        sys.exit(1)
+
+    process_cda_file_with_cleanup(cda_file, db_path, args.batch_size)
 
 
 if __name__ == "__main__":
