@@ -66,7 +66,8 @@ It features interactive charts, data filtering, and visualization of your health
 
 5. **Import CDA data:**
    
-   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance. The path to this file is configured in config.py, or can be passed as an argument. Use --help for info.
+   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance.
+   The path to this file is configured in config.py, or can be passed as an argument. Use --help for info.
    ```bash
    python preprocess_cda.py
    ```
@@ -74,8 +75,9 @@ It features interactive charts, data filtering, and visualization of your health
 5. **Import Apple data:**
    
    This loads the data from the CDA file (usually export.xml) into a local sqlite database, for better performance.
+   The path to this file is configured in config.py, or can be passed as an argument. Use --help for info.
    ```bash
-   python preprocess_apple_health.py "/path/to/your/apple_health_export/export.xml"
+   python preprocess_apple_health.py
    ```
    
 

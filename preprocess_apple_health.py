@@ -17,6 +17,9 @@ import argparse
 from typing import Dict, Optional
 import re
 
+import config
+
+
 def create_database_schema(conn: sqlite3.Connection):
     """Create SQLite database schema for Apple Health data"""
     
@@ -358,13 +361,17 @@ def process_xml_file(xml_path: Path, db_path: Path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Process Apple Health export.xml file')
-    parser.add_argument('xml_file', help='Path to Apple Health export.xml file')
+    parser = argparse.ArgumentParser(description="Process Apple Health export.xml file.")
+    parser.add_argument('--xml_file', help='Path to Apple Health export.xml file' +
+        '"\n\tDefaults to export.xml in _source_dir from config.py')
     parser.add_argument('--db', default='apple_health.db', help='Output database file (default: apple_health.db)')
     
     args = parser.parse_args()
-    
-    xml_path = Path(args.xml_file)
+    if args.xml_file:
+        xml_path = Path(args.xml_file)
+    else:
+        xml_path = config.get_source_dir() / "export.xml"
+
     if not xml_path.exists():
         print(f"Error: XML file not found: {xml_path}")
         sys.exit(1)
