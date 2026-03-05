@@ -38,7 +38,7 @@ It features interactive charts, data filtering, and visualization of your health
 - Apple Health export data (see [Getting Your Data](#getting-your-data) below)
 
 ### Installation
-
+#### Software setup
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/tomhill/HealthDataApple.git
@@ -47,7 +47,7 @@ It features interactive charts, data filtering, and visualization of your health
 
 2. **Create a virtual environment:**
    ```bash
-   python -m venv .venv
+   python -m venv .venv       # Might need to use "python3", instead of "python"
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
@@ -55,7 +55,7 @@ It features interactive charts, data filtering, and visualization of your health
    ```bash
    python -m pip install -r requirements.txt
    ```
-
+#### Import Data (rerun every time you get new data)
 4. **Configure your data path:**
    
    Edit `config.py` and update the `source_dir` path to point to your Apple Health export:
@@ -66,14 +66,14 @@ It features interactive charts, data filtering, and visualization of your health
 
 5. **Import CDA data:**
    
-   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance.
+   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance. The path to this file is configured in config.py, or can be passed as an argument. Use --help for info.
    ```bash
-   python preprocess_cda.py "/path/to/your/apple_health_export/export_cda.xml"
+   python preprocess_cda.py
    ```
    
 5. **Import Apple data:**
    
-   This loads the data from the CDA file (usually export_cda.xml) into a local sqlite database, for better performance.
+   This loads the data from the CDA file (usually export.xml) into a local sqlite database, for better performance.
    ```bash
    python preprocess_apple_health.py "/path/to/your/apple_health_export/export.xml"
    ```
@@ -98,7 +98,7 @@ has an option to connect with health care provider's servers, and download the d
 
 ### (Optional) Connect Kaiser Permanente to Apple Health
 This may work with other providers, but Kaiser is the only one tested. In theory, they have the same format: [FHIR](https://fhir.org/), 
-but in practice, there may be differences. For examnple, Kaiser data comes in as separate files, Synthea data comes in as an array, in
+but in practice, there may be differences. For example, Kaiser data comes in as separate files, Synthea data comes in as an array, in
 one file.
 
 1. Open the **Apple Health** app on your iPhone
@@ -131,8 +131,8 @@ apple_health_export/
 │   ├── MedicationRequest-*.json
 │   └── Procedure-*.json
 ├── export.xml                 # Apple Health data
-├── export_cda.xml            # Additional health data
-└── workout-routes/           # GPS workout data
+├── export_cda.xml             # Additional health data
+└── workout-routes/            # GPS workout data
 ```
 The above is the structure for AppleHealth/Kaiser. For testing, 
 we also support [Synthea](https://synthetichealth.github.io/synthea/) format, via convert_synthea.py. Other formats

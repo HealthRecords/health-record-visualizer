@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional, Generator
 import time
 
+import config
 from xml_reader import get_test_results, trim, find
 import xml.etree.ElementTree as ET
 import unicodedata
@@ -270,9 +271,13 @@ def get_database_stats(db_path: Path) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Preprocess CDA XML file into SQLite database")
-    parser.add_argument("cda_file", help="Path to CDA XML file (e.g., export_cda.xml)")
-    parser.add_argument("-o", "--output", help="Output SQLite database file", 
+    cda_file = "export_cda.xml"  # The file we are importing data from.
+
+    parser = argparse.ArgumentParser(description="Preprocess CDA XML file into SQLite database, or get DB stats.")
+    parser.add_argument("--cda_file", help="Path to CDA XML file (e.g., export_cda.xml)." +
+                        "\n\tRequired for import (the default), not for stats." +
+                        "\n\tDefaults to the source_dir value in config.py")
+    parser.add_argument("-d", "--database", help="Output SQLite database file",
                        default="cda_observations.db")
     parser.add_argument("--stats", action="store_true", 
                        help="Show statistics for existing database")
@@ -281,22 +286,32 @@ def main():
     
     args = parser.parse_args()
     
-    cda_file = Path(args.cda_file)
-    db_path = Path(args.output)
+    db_path = Path(args.database)
     
     if args.stats:
         get_database_stats(db_path)
         return
     
+    if args.cda_file:
+        cda_file = Path(args.cda_file)
+    else:
+        source_dir = config.get_source_dir()
+        if not source_dir:
+            print("No source dir found in config.py. Must be as an arg with --cda_file or configured in config.py")
+            sys.exit(1)
+        cda_file = source_dir / cda_file
+        if not cda_file.exists():
+            print("No CDA XML file provided for import. Must be as an arg with --cda_file or configured in config.py")
+            sys.exit(1)
     if not cda_file.exists():
-        print(f"CDA file not found: {cda_file}")
-        sys.exit(1)
+        print(f"CDA file not found: {cda_file}. Neither as argument nor in config.py")
+        sys.exit(2)
     
     if db_path.exists():
         response = input(f"Database {db_path} already exists. Overwrite? (y/N): ")
         if response.lower() != 'y':
             print("Cancelled.")
-            sys.exit(1)
+            sys.exit(3)
         db_path.unlink()
     
     try:
