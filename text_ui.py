@@ -140,19 +140,22 @@ def menu_main(condition_path: Path, args) -> None:
                 print("I don't know anything about " + value + " files, yet.")
     return
 
+import config
 
 def go():
     args  = parse_args()
-    base = Path("export/apple_health_export")
-    base = Path('/Users/tomhill/Downloads/AppleHealth/apple_health_export')
-    base = Path('/Users/tomhill/Downloads/apple_health_export')
+    base = config.get_source_dir()
+    # base = Path("export/apple_health_export")
+    # base = Path('/Users/tomhill/Downloads/AppleHealth/apple_health_export')
+    # base = Path('/Users/tomhill/Downloads/apple_health_export')
     if not Path.exists(base):
         print("No data found in ", base)
         sys.exit(1)
 
 
     condition_path = base / "clinical-records"
-
+    print("Condition path:", condition_path)
+    menu_main(condition_path, args)
     menu_main(condition_path, args)
     return
 
