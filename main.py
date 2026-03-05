@@ -57,6 +57,13 @@ def get_health_paths():
     """Get the base path and clinical records path for health data"""
     base_path = config.get_source_dir()
     clinical_path = base_path / "clinical-records"
+    try:
+        # Helpful diagnostics in server logs
+        print(f"🔧 Configured HEALTH_DATA_DIR: {base_path}")
+        print(f"   Exists: {base_path.exists()} | clinical-records: {clinical_path.exists()}")
+    except Exception:
+        # Avoid breaking on any unexpected errors in printing
+        pass
     return base_path, clinical_path
 
 def get_navigation_context():
@@ -67,6 +74,26 @@ def get_navigation_context():
         "has_fhir_data": len(prefixes) > 0,
         "has_cda_data": config.has_cda_database(),
         "has_apple_health_data": config.has_apple_health_database()
+    }
+
+@app.get("/api/debug/config", response_class=JSONResponse)
+def debug_config():
+    """Return diagnostic info about configured paths and detected data"""
+    base_path, clinical_path = get_health_paths()
+    try:
+        clinical_files = list(clinical_path.glob("*.json")) if clinical_path.exists() else []
+    except Exception:
+        clinical_files = []
+    return {
+        "base_path": str(base_path),
+        "base_path_exists": base_path.exists(),
+        "clinical_path": str(clinical_path),
+        "clinical_path_exists": clinical_path.exists(),
+        "clinical_json_count": len(clinical_files),
+        "has_cda_db": config.has_cda_database(),
+        "has_apple_health_db": config.has_apple_health_database(),
+        "apple_health_db_path": str(config.get_apple_health_database_path()),
+        "cda_db_path": str(config.get_cda_database_path()),
     }
 
 @app.get("/", response_class=HTMLResponse)
